@@ -7,6 +7,7 @@ from bson import ObjectId
 from types import SimpleNamespace
 from passlib.hash import bcrypt
 from datetime import datetime
+from pinecone_utils import add_resume_to_pinecone
 
 load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI")                 # Atlas SRV string
@@ -88,12 +89,40 @@ def get_resumes_by_ids(id_list: List[str]):
     ]
 
 def update_resume(resume_id: str, name: str, text: str) -> int:
-    if _guard("update_resume"):
+    """
+    Update Mongo *and* Pinecone.  
+      • If only the name changed, we upsert metadata only  
+      • If the text changed too, we re-embed & upsert the full vector
+    Returns: number of Mongo documents modified (0 or 1)
+    """
+    # 1) look up current doc to see whether text really changed
+    old = _resumes.find_one({"resume_id": resume_id})
+    if not old:
         return 0
+
+    # 2) update Mongo
     res = _resumes.update_one(
-        {"resume_id": resume_id.strip()},
+        {"resume_id": resume_id},
         {"$set": {"name": name, "text": text}},
     )
+
+    # 3) update Pinecone
+    if text.strip() != old.get("text", ""):
+        # text changed → recompute embedding & full upsert
+        add_resume_to_pinecone(
+            text,
+            resume_id,
+            {"name": name, "text": text},
+            namespace="resumes",
+        )
+    else:
+        # only name changed → metadata-only upsert (lighter / cheaper)
+        from pinecone_utils import index
+        index.upsert(
+            vectors=[(resume_id, None, {"name": name})],
+            namespace="resumes",
+        )
+
     return res.modified_count
 
 def delete_resume_by_id(resume_id: str) -> int:
@@ -101,3 +130,5 @@ def delete_resume_by_id(resume_id: str) -> int:
         return 0
     res = _resumes.delete_one({"resume_id": resume_id.strip()})
     return res.deleted_count
+
+

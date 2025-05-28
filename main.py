@@ -335,12 +335,41 @@ async def chat_action(
 # upload résumé – saves to Pinecone + Mongo (if available)
 # ═════════════════════════════════════════════════════════════════════════════
 
+def guess_name(name_field: str, filename: str, text: str) -> str:
+    """
+    1) explicit <input name="name"> if the user filled it
+    2) otherwise first ~40 chars of the file name (strip .pdf/.docx etc.)
+    3) otherwise first non-empty line of the résumé text
+    """
+    n = name_field.strip()
+    if n:
+        return n
+
+    stem = os.path.splitext(os.path.basename(filename))[0].strip()
+    if stem:
+        return stem[:40]
+
+    for line in text.splitlines():
+        line = line.strip()
+        if line:
+            return line[:60]
+    return "Unnamed résumé"          # shouldn’t really happen
+
+
+def slugify(val: str) -> str:
+    return (
+        re.sub(r"[^a-z0-9]+", "-", val.lower())
+        .strip("-")[:48]              # keep it short
+        or str(uuid.uuid4())          # absolute fallback
+    )
+
+# ── main upload handler --------------------------------------------------
 @app.post("/upload_resume", response_class=HTMLResponse)
 async def upload_resume(
     request: Request,
-    user=Depends(require_login),
-    name: str = Form(""),
-    text: str = Form(""),
+    user          = Depends(require_login),
+    name: str     = Form(""),
+    text: str     = Form(""),
     file: UploadFile = File(None),
 ):
     if file and file.filename:
@@ -348,25 +377,36 @@ async def upload_resume(
         text = extract_text(data, file.filename)
         if not text:
             return render(request, "index.html",
-                  {"popup": "Unsupported file type."},
-                  page_title="Home")
+                          {"popup": "Unsupported file type."},
+                          page_title="Home")
 
     if not text.strip():
         return render(request, "index.html",
-                  {"popup": "Résumé text is empty."},
-                  page_title="Home")
+                      {"popup": "Résumé text is empty."},
+                      page_title="Home")
 
-    resume_id = name.strip() or str(uuid.uuid4())
-    add_resume_to_pinecone(text, resume_id, {"name": name or resume_id, "text": text}, "resumes")
+    # ───── pick a *display* name & a stable ID ────────────────────────────
+    display_name = guess_name(name, file.filename if file else "", text)
+    resume_id    = slugify(display_name)     # or uuid if slug empty
 
-    # Mongo may be offline, wrap in try/except
+    # push to Pinecone
+    add_resume_to_pinecone(
+        text,
+        resume_id,                    # vector ID
+        {"name": display_name, "text": text},   # metadata
+        "resumes",
+    )
+
+    # push to Mongo
     try:
-        resumes_collection.insert_one({"name": name or resume_id, "resume_id": resume_id, "text": text})
-    except Exception as e:  # pragma: no cover
+        resumes_collection.insert_one(
+            {"resume_id": resume_id, "name": display_name, "text": text}
+        )
+    except Exception as e:            # pragma: no cover
         print("🛑 Mongo insert failed:", e)
 
-        return render(request, "index.html",
-                  {"popup": f"Résumé added as {resume_id}."},
+    return render(request, "index.html",
+                  {"popup": f"Résumé added: {display_name}"},
                   page_title="Home")
 
 
