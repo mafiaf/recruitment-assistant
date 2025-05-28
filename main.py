@@ -15,11 +15,16 @@ import pdfplumber
 import PyPDF2
 from docx import Document
 from dotenv import load_dotenv
-from fastapi import Body, FastAPI, File, Form, Request, UploadFile
+from fastapi import Body, FastAPI, File, Form, Request, UploadFile, Depends, HTTPException, status, Cookie
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from itsdangerous import URLSafeTimedSerializer, BadSignature
+from starlette.responses import RedirectResponse
+from passlib.context import CryptContext
+from datetime import datetime
+
 
 # ── local helper modules ──────────────────────────────────────────────────────
 from db import (
@@ -29,7 +34,8 @@ from db import (
     resumes_by_ids,
     resumes_collection,
 )
-from mongo_utils import update_resume, delete_resume_by_id
+
+from mongo_utils import update_resume, delete_resume_by_id, db
 from pinecone_utils import (
     add_resume_to_pinecone,
     embed_text,
@@ -43,6 +49,106 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# USERS
+# ═════════════════════════════════════════════════════════════════════════════
+# password‐hashing context
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# reuse your existing `db` from mongo_utils / main.py
+users_coll = db["users"]
+users_coll.create_index("username", unique=True)
+
+# ── helpers ────────────────────────────────────────────────────────────────
+def render(request: Request,
+           template_name: str,
+           ctx: dict | None = None,
+           page_title: str | None = None,
+           active: str | None = None) -> HTMLResponse:
+    """
+    Wrapper around TemplateResponse that always injects:
+      * request (FastAPI requirement)
+      * active      – current path for nav highlighting
+      * page_title  – headline for <h1>
+      * user        – current logged-in user (or None)
+    """
+    ctx = ctx or {}
+    ctx.setdefault("request", request)
+    ctx.setdefault("active",  active or request.url.path)
+    ctx.setdefault("page_title", page_title or "")
+    ctx.setdefault("user", get_current_user(request.cookies.get(COOKIE_NAME)))
+    return templates.TemplateResponse(template_name, ctx)
+
+def get_user(username: str):
+    return users_coll.find_one({"username": username})
+
+def create_user(username: str, password: str, role: str = "user"):
+    users_coll.insert_one(
+        {
+            "username": username,
+            "hashed_password": pwd_context.hash(password),
+            "role": role,
+            "created": datetime.utcnow(),
+        }
+    )
+
+def verify_password(username: str, password: str):
+    user = get_user(username)
+    if user and pwd_context.verify(password, user["hashed_password"]):
+        return user
+    return None
+
+# ── signed-cookie session ──────────────────────────────────────────────────
+SECRET_KEY = os.getenv("SESSION_SECRET", "dev-secret")   # set a strong one!
+signer = URLSafeTimedSerializer(SECRET_KEY, salt="auth-cookie")
+COOKIE_NAME = "session"
+
+def set_session(resp, user: dict):
+    token = signer.dumps({"u": user["username"], "r": user["role"]})
+    resp.set_cookie(
+        COOKIE_NAME,
+        token,
+        max_age=8 * 3600,
+        httponly=True,
+        secure=False,          
+        samesite="strict"      
+    )
+
+def clear_session(resp):
+    resp.delete_cookie(COOKIE_NAME)
+
+def get_current_user(session: str = Cookie(None)):
+    if not session:
+        return None
+    try:
+        data = signer.loads(session, max_age=8 * 3600)
+        return get_user(data["u"])
+    except BadSignature:
+        return None
+
+def require_login(user=Depends(get_current_user)):
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_302_FOUND, headers={"Location": "/login"}
+        )
+    return user
+
+def require_owner(user=Depends(require_login)):
+    if user["role"] != "owner":
+        raise HTTPException(status_code=403, detail="Owners only")
+    return user
+
+@app.on_event("startup")
+def seed_owner():
+    if users_coll.count_documents({"role": "owner"}) == 0:
+        create_user(
+            os.getenv("OWNER_USER", "owner"),
+            os.getenv("OWNER_PASS", "changeme!"),
+            role="owner",
+        )
+        print("🟢 Created initial owner account")    
 
 # ═════════════════════════════════════════════════════════════════════════════
 # PDF & DOCX extraction helpers
@@ -78,12 +184,12 @@ def extract_text(data: bytes, filename: str) -> str:
 # ═════════════════════════════════════════════════════════════════════════════
 
 @app.get("/", response_class=HTMLResponse)
-def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+def home(request: Request, user=Depends(require_login)):
+    return render(request, "index.html", page_title="Home")
 
 
 @app.get("/chat", response_class=HTMLResponse)
-def chat_interface(request: Request):
+def chat_interface(request: Request, user=Depends(require_login)):
     # sidebar list (may be empty if Mongo down)
     candidates = [
         {"id": r["resume_id"], "name": r["name"]}
@@ -99,21 +205,16 @@ def chat_interface(request: Request):
 
     last_proj = doc.get("last_project", {})   # (keep if you still need it)
 
-    return templates.TemplateResponse(
-        "chat.html",
-        {
-            "request":    request,
-            "history":    history,
-            "candidates": candidates,
-        },
-    )
+    return render(request, "chat.html",
+                  {"history": history, "candidates": candidates},
+                  page_title="Chat")
 
 
 # ──────────────────────────────────────────────────────────────────────────
 # /chat  – text follow-ups (no file upload)
 # ──────────────────────────────────────────────────────────────────────────
 @app.post("/chat", response_class=JSONResponse)
-async def chat(request: Request):
+async def chat(request: Request, user=Depends(require_login)):
     payload      = await request.json()
     user_text    = payload.get("text", "").strip()
     selected_ids = payload.get("candidate_ids", [])        # list[str]
@@ -191,7 +292,8 @@ async def chat(request: Request):
 
 @app.post("/chat_action", response_class=HTMLResponse)
 async def chat_action(
-    request: Request,
+    request: Request, 
+    user=Depends(require_login),
     action: str = Form(...),
     candidate_ids: List[str] = Form([]),
 ):
@@ -225,10 +327,9 @@ async def chat_action(
     ).choices[0].message.content
 
     candidates = [{"id": r["resume_id"], "name": r["name"]} for r in resumes_all()]
-    return templates.TemplateResponse(
-        "chat.html",
-        {"request": request, "reply": reply, "candidates": candidates},
-    )
+    return render(request, "chat.html",
+                  {"reply": reply, "candidates": candidates},
+                  page_title="Chat")
 
 # ═════════════════════════════════════════════════════════════════════════════
 # upload résumé – saves to Pinecone + Mongo (if available)
@@ -237,6 +338,7 @@ async def chat_action(
 @app.post("/upload_resume", response_class=HTMLResponse)
 async def upload_resume(
     request: Request,
+    user=Depends(require_login),
     name: str = Form(""),
     text: str = Form(""),
     file: UploadFile = File(None),
@@ -245,15 +347,14 @@ async def upload_resume(
         data = await file.read()
         text = extract_text(data, file.filename)
         if not text:
-            return templates.TemplateResponse(
-                "index.html",
-                {"request": request, "popup": "Unsupported file type."},
-            )
+            return render(request, "index.html",
+                  {"popup": "Unsupported file type."},
+                  page_title="Home")
 
     if not text.strip():
-        return templates.TemplateResponse(
-            "index.html", {"request": request, "popup": "Résumé text is empty."}
-        )
+        return render(request, "index.html",
+                  {"popup": "Résumé text is empty."},
+                  page_title="Home")
 
     resume_id = name.strip() or str(uuid.uuid4())
     add_resume_to_pinecone(text, resume_id, {"name": name or resume_id, "text": text}, "resumes")
@@ -264,9 +365,9 @@ async def upload_resume(
     except Exception as e:  # pragma: no cover
         print("🛑 Mongo insert failed:", e)
 
-    return templates.TemplateResponse(
-        "index.html", {"request": request, "popup": f"Résumé added as {resume_id}."}
-    )
+        return render(request, "index.html",
+                  {"popup": f"Résumé added as {resume_id}."},
+                  page_title="Home")
 
 
 # ---------------------------------------------------------------------------
@@ -301,6 +402,7 @@ async def match_project_logic(description: str,
 @app.post("/match_project", response_class=HTMLResponse)
 async def match_project(
     request: Request,
+    user=Depends(require_login),
     description: str = Form(""),
     file: UploadFile = File(None),
     candidate_ids: Optional[List[str]] = Form(None),
@@ -484,7 +586,7 @@ async def match_project(
     return HTMLResponse(content=html_fragment)
 
 @app.get("/resumes", response_class=HTMLResponse)
-def list_resumes(request: Request):
+def list_resumes(request: Request, user=Depends(require_login)):
     """
     Returns an overview of all résumés. Works even when MongoDB is offline.
     """
@@ -504,13 +606,12 @@ def list_resumes(request: Request):
         for d in docs
     ]
 
-    return templates.TemplateResponse(
-        "resumes.html",
-        {"request": request, "resumes": resumes_for_tpl},
-    )
+    return render(request, "resumes.html",
+                  {"resumes": resumes_for_tpl},
+                  page_title="Résumés", active="/resumes")
 
 @app.get("/view_resumes", response_class=HTMLResponse)
-async def view_resumes(request: Request):
+async def view_resumes(request: Request, user=Depends(require_login)):
     # Search all resumes from the "resumes" namespace
     try:
         print("🟢 Querying Pinecone for all resumes...")
@@ -536,15 +637,19 @@ async def view_resumes(request: Request):
                 "text": match.metadata.get("text", "No description available.")
             })
 
-        return templates.TemplateResponse("resumes.html", {"request": request, "resumes": resumes})
+        return render(request, "resumes.html",
+                      {"resumes": resumes},
+                        page_title="Résumés", active="/resumes")
 
     except Exception as e:
         print("🛑 Pinecone query failed:", e)
-        return templates.TemplateResponse("resumes.html", {"request": request, "resumes": []})
+        return render(request, "resumes.html",
+                      {"resumes": resumes},
+                        page_title="Résumés", active="/resumes")
 
 
 @app.get("/edit_resume", response_class=HTMLResponse)
-def edit_resume(request: Request, id: str):
+def edit_resume(request: Request, id: str, user=Depends(require_login)):
     """
     Fetch the résumé by either resume_id or Mongo _id.
     """
@@ -561,8 +666,7 @@ def edit_resume(request: Request, id: str):
     if not doc:                        # still nothing → 404
         return PlainTextResponse("Résumé not found", status_code=404)
 
-    return templates.TemplateResponse(
-        "edit_resume.html",
+    return render(request, "edit_resume.html",
         {
             "request": request,
             "resume": {
@@ -571,7 +675,7 @@ def edit_resume(request: Request, id: str):
                 "text":      doc["text"],
             },
         },
-    )
+        page_title="Edit résumé")
 
 @app.post("/update_resume")
 def update_resume_route(
@@ -582,7 +686,7 @@ def update_resume_route(
     if not modified:
         print(f"🛑 Nothing updated for resume_id {resume_id!r}")
     return RedirectResponse("/resumes", status_code=303)
-    
+
 @app.post("/delete_resume")
 async def delete_resume_route(id: str = Form(...)):
     print(f"🟢 Deleting resume with ID: {id}")
@@ -605,7 +709,7 @@ async def delete_resume_route(id: str = Form(...)):
 
 
 @app.post("/chat_followup", response_class=JSONResponse)
-async def chat_followup(request: Request):
+async def chat_followup(request: Request, user=Depends(require_login)):
     payload        = await request.json()
     user_text      = payload.get("message", "").strip()
     user_id        = "demo_user"                          # TODO real session
@@ -677,3 +781,73 @@ async def chat_followup(request: Request):
         upsert=True
     )
     return {"reply": assistant_reply}
+
+
+    # ── Login ────────────────────────────────────────────────
+
+
+@app.get("/login", response_class=HTMLResponse)
+def login_form(request: Request):
+       return render(request, "login.html", page_title="Login", active="/login")
+
+@app.post("/login")
+async def login_post(request: Request,
+                     username: str = Form(...),
+                     password: str = Form(...)):
+    user = verify_password(username, password)
+    if not user:
+        return render(request, "login.html",
+                      {"error": "Invalid credentials"},
+                      page_title="Login", active="/login",
+                      ctx_status=401)  # see note* below
+    resp = RedirectResponse("/", status_code=303)
+    set_session(resp, user)
+    return resp
+
+@app.get("/logout")
+def logout():
+    resp = RedirectResponse("/", status_code=303)
+    clear_session(resp)
+    return resp
+
+
+
+@app.get("/admin/users", response_class=HTMLResponse, dependencies=[Depends(require_owner)])
+def user_admin(request: Request):
+    users = list(users_coll.find({}, {"_id": 0, "hashed_password": 0}))   # hide pwd hash
+    return render(request, "admin_users.html",
+                  {"users": users},
+                  page_title="User admin", active="/admin/users")
+
+@app.post("/admin/users", dependencies=[Depends(require_owner)])
+def create_user_admin(
+    username: str = Form(...),
+    password: str = Form(...),
+    role: str = Form("user"),
+):
+    if users_coll.find_one({"username": username}):
+        raise HTTPException(400, "User already exists")
+    create_user(username, password, role)
+    return RedirectResponse("/admin/users", status_code=303)
+
+
+@app.get("/profile", response_class=HTMLResponse, dependencies=[Depends(require_login)])
+def profile(request: Request, user = Depends(get_current_user)):
+    return render(request, "profile.html",
+                  {"user": user},
+                  page_title="Profile", active="/profile")
+
+# change password
+@app.post("/profile/password", dependencies=[Depends(require_login)])
+def change_password(
+        old: str = Form(...),
+        new: str = Form(...),
+        user = Depends(get_current_user)
+    ):
+    if not verify_password(user["username"], old):
+        raise HTTPException(400, "Old password incorrect")
+    users_coll.update_one(
+        {"username": user["username"]},
+        {"$set": {"hashed_password": pwd_context.hash(new)}}
+    )
+    return RedirectResponse("/profile?ok=1", status_code=303)

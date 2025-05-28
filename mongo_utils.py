@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 from pymongo import MongoClient, errors
 from bson import ObjectId
 from types import SimpleNamespace
+from passlib.hash import bcrypt
+from datetime import datetime
 
 load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI")                 # Atlas SRV string
@@ -30,6 +32,25 @@ print(f"🟢 mongo_utils ready – DB: {DB_NAME} / collection: {_resumes.name}")
 #    flip a global flag so later calls just return harmless defaults #
 # ------------------------------------------------------------------ #
 _MONGO_DOWN = False
+
+_users = db["users"]
+
+def get_user(username: str):
+    return _users.find_one({"username": username})
+
+def create_user(username: str, pw: str, role: str = "user"):
+    _users.insert_one({
+        "username": username,
+        "password_hash": bcrypt.hash(pw),
+        "role": role,
+        "created": datetime.utcnow()
+    })
+
+def verify_password(username: str, pw: str) -> dict | None:
+    doc = get_user(username)
+    if doc and bcrypt.verify(pw, doc["password_hash"]):
+        return doc
+    return None
 
 def _guard(op: str):
     global _MONGO_DOWN

@@ -1,0 +1,39 @@
+{% extends "_base.html" %}
+{% set page_title = "User administration" %}
+{% set active = "/admin/users" %}
+
+{% block body %}
+<h2 class="text-2xl font-semibold mb-6">Users</h2>
+
+<table class="w-full text-sm border rounded-xl overflow-hidden shadow">
+  <thead>
+    <tr class="bg-gray-100 text-left">
+      <th class="px-4 py-2">Username</th>
+      <th class="px-2 py-2">Role</th>
+      <th class="px-2 py-2">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for u in users %}
+    <tr class="odd:bg-white even:bg-gray-50">
+      <td class="px-4 py-2">{{ u.username }}</td>
+      <td class="px-2 py-2">{{ u.role }}</td>
+      <td class="px-2 py-2 space-x-3 text-sm">
+        <!-- later: change-pw / delete buttons -->
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3 class="text-lg font-medium mt-8 mb-2">Add new user</h3>
+<form action="/admin/users" method="post" class="space-x-2">
+  <input name="username" placeholder="username" class="border px-2 py-1 rounded" required>
+  <input name="password" type="password" placeholder="password" class="border px-2 py-1 rounded" required>
+  <select name="role" class="border px-2 py-1 rounded">
+    <option value="user">user</option>
+    <option value="owner">owner</option>
+  </select>
+  <button class="px-4 py-1 bg-blue-600 text-white rounded">create</button>
+</form>
+{% endblock %}
