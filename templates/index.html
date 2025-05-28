@@ -1,3 +1,4 @@
+{# templates/index.html #}
 {% extends "_base.html" %}
 {% set active = "/" %}
 {% set page_title = "Home" %}
@@ -5,22 +6,37 @@
 {% block body %}
 <div class="px-6 pt-6 flex flex-col items-center gap-8">
 
-  <!-- drop-zone -->
+  <!-- ════════════════════════════════
+       DRAG-AND-DROP + AJAX UPLOAD BOX
+       ════════════════════════════════ -->
   <form id="resume-form"
         class="w-full max-w-xl border-4 border-dashed border-gray-300
-               rounded-2xl flex flex-col items-center justify-center py-16 bg-white">
-    <input id="resume-file" type="file" name="file" accept=".pdf,.docx" class="hidden">
-    <p class="text-lg text-gray-500 mb-4">
-      Drag & drop a résumé PDF/DOCX here<br>or click to browse
+               rounded-2xl flex flex-col items-center justify-center
+               py-16 bg-white transition-colors"
+        autocomplete="off">
+    <input id="resume-file"
+           type="file"
+           name="file"
+           accept=".pdf,.docx"
+           class="hidden">
+    <p class="text-lg text-gray-500 mb-4 pointer-events-none">
+      Drag &amp; drop a résumé PDF / DOCX here<br>
+      or click to browse
     </p>
-    <button id="select-btn" type="button"
-            class="px-4 py-2 rounded bg-blue-600 text-white">Browse files</button>
+    <button id="select-btn"
+            type="button"
+            class="px-4 py-2 rounded bg-blue-600 text-white">
+      Browse files
+    </button>
   </form>
 
-  <!-- recent uploads -->
+  <!-- ════════════════════════════════
+       RECENT UPLOADS TABLE
+       ════════════════════════════════ -->
   <section class="w-full max-w-5xl">
     <h2 class="text-lg font-medium mb-2">Recent uploads</h2>
-    <table class="w-full text-sm border rounded-xl overflow-hidden shadow">
+    <table id="uploads-table"
+           class="w-full text-sm border rounded-xl overflow-hidden shadow">
       <thead>
         <tr class="bg-gray-100 text-left">
           <th class="px-4 py-2">Name</th>
@@ -52,10 +68,78 @@
 
 {% block extra_js %}
 <script>
-document.getElementById('select-btn').onclick =
-  () => document.getElementById('resume-file').click();
+const dropZone  = document.getElementById('resume-form');
+const fileInput = document.getElementById('resume-file');
+const browseBtn = document.getElementById('select-btn');
+const uploadsTb = document.querySelector('#uploads-table tbody');
 
-const f = document.getElementById('resume-file');
-f.onchange = () => f.form.submit();   // auto-submit after choosing a file
+/* helper: add a new row without reloading */
+function prependRow(name, id){
+  const tr = document.createElement('tr');
+  tr.className = 'odd:bg-white even:bg-gray-50';
+  tr.innerHTML = `
+    <td class="px-4 py-2">${name}</td>
+    <td class="px-2 py-2">just now</td>
+    <td class="px-2 py-2 space-x-3">
+      <a href="/resumes#${id}" class="text-blue-600 hover:underline">edit</a>
+      <form action="/delete_resume" method="post" class="inline">
+        <input type="hidden" name="id" value="${id}">
+        <button class="text-red-600 hover:underline"
+                onclick="return confirm('Delete?')">delete</button>
+      </form>
+    </td>`;
+  uploadsTb.prepend(tr);
+}
+
+/* click → open picker */
+browseBtn.onclick = () => fileInput.click();
+
+/* picker → send via fetch */
+fileInput.onchange = () => {
+  if (fileInput.files.length) uploadFile(fileInput.files[0]);
+};
+
+/* drag-and-drop visual cues */
+['dragenter','dragover'].forEach(evt =>
+  dropZone.addEventListener(evt, e=>{
+    e.preventDefault();
+    dropZone.classList.add('bg-blue-50');
+  })
+);
+['dragleave','drop'].forEach(evt =>
+  dropZone.addEventListener(evt, e=>{
+    e.preventDefault();
+    dropZone.classList.remove('bg-blue-50');
+  })
+);
+
+/* drop handler */
+dropZone.addEventListener('drop', e=>{
+  if (e.dataTransfer.files.length){
+    uploadFile(e.dataTransfer.files[0]);
+  }
+});
+
+/* core upload logic */
+async function uploadFile(file){
+  const fd = new FormData();
+  fd.append('file', file);
+  /* you could collect additional fields here (e.g. name) */
+
+  try{
+    const res = await fetch('/upload_resume', {method:'POST', body: fd});
+    if(!res.ok) throw new Error(await res.text());
+
+    const msg = await res.text();   // server returns full HTML page
+    // a cheap way: peek at the popup message to get the ID & name
+    const m = msg.match(/ID (\S+)\./);          // "... added with ID xyz."
+    const id = m ? m[1] : crypto.randomUUID();
+    prependRow(file.name, id);
+  }catch(err){
+    alert('Upload failed: ' + err);
+  }finally{
+    fileInput.value = '';             // reset the picker
+  }
+}
 </script>
 {% endblock %}
