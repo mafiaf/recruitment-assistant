@@ -66,7 +66,9 @@ def render(request: Request,
            template_name: str,
            ctx: dict | None = None,
            page_title: str | None = None,
+           status_code: int = 200,
            active: str | None = None) -> HTMLResponse:
+           
     """
     Wrapper around TemplateResponse that always injects:
       * request (FastAPI requirement)
@@ -79,7 +81,8 @@ def render(request: Request,
     ctx.setdefault("active",  active or request.url.path)
     ctx.setdefault("page_title", page_title or "")
     ctx.setdefault("user", get_current_user(request.cookies.get(COOKIE_NAME)))
-    return templates.TemplateResponse(template_name, ctx)
+    return templates.TemplateResponse(template_name, ctx,
+                                      status_code=status_code)
 
 def get_user(username: str):
     return users_coll.find_one({"username": username})
@@ -839,7 +842,7 @@ async def login_post(request: Request,
         return render(request, "login.html",
                       {"error": "Invalid credentials"},
                       page_title="Login", active="/login",
-                      ctx_status=401)  # see note* below
+                      status_code=401)
     resp = RedirectResponse("/", status_code=303)
     set_session(resp, user)
     return resp
