@@ -26,30 +26,32 @@
         <td class="px-2 py-2">{{ r.text|length }} chars</td>
         <td class="px-2 py-2 space-x-3 text-sm">
 
-          <!-- preview -->
-          <details class="inline">
-            <summary class="cursor-pointer text-blue-600 hover:underline">preview</summary>
-            <pre class="p-2 bg-gray-100 max-h-60 overflow-auto whitespace-pre-wrap text-xs">
-{{ r.text[:1500] }}{% if r.text|length>1500 %}…{% endif %}
-            </pre>
-          </details>
+        <!-- preview → uses <details>   (no form, just HTML) -->
+        <details class="inline">
+          <summary class="cursor-pointer text-blue-600 hover:underline">preview</summary>
+          <pre class="p-2 bg-gray-100 max-h-60 overflow-auto whitespace-pre-wrap text-xs">
+            {{ r.text[:1500] }}{% if r.text|length > 1500 %}…{% endif %}
+          </pre>
+        </details>
 
-          <!-- edit -->
-          <form action="/edit_resume" method="get" class="inline">
-            <input type="hidden" name="id" value="{{ r.id }}">
-            <button class="text-yellow-600 hover:underline">edit</button>
-          </form>
+        <!-- EDIT (= GET /edit_resume?id=…)  -->
+        <form action="/edit_resume" method="get" class="inline">
+          <input type="hidden" name="id" value="{{ r.id }}">
+          <!--  ✦ add type="submit" so only this form fires  -->
+          <button type="submit" class="text-yellow-600 hover:underline">edit</button>
+        </form>
 
-          <!-- delete -->
-          <form action="/delete_resume" method="post" class="inline">
-            <input type="hidden" name="id" value="{{ r.id }}">
-            <button class="text-red-600 hover:underline"
-                    onclick="return confirm('Delete résumé?')">
-              delete
-            </button>
-          </form>
+        <!-- DELETE (= POST /delete_resume) -->
+        <form action="/delete_resume" method="post" class="inline">
+          <input type="hidden" name="id" value="{{ r.id }}">
+          <button type="submit"
+                  class="text-red-600 hover:underline"
+                  onclick="return confirm('Delete résumé?')">
+            delete
+          </button>
+        </form>
 
-        </td>
+      </td>
       </tr>
       {% endfor %}
     </tbody>

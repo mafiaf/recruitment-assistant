@@ -90,80 +90,100 @@ def chat_interface(request: Request):
         for r in resumes_all()
     ]
 
-    # previous conversation
-    user_id = "demo_user"  # TODO real session cookie
-    doc = chat_find_one({"user_id": user_id}) or {}
-    history = doc.get("messages", [])
+    user_id = "demo_user"                # TODO: real session cookie
+    doc      = chat_find_one(user_id) or {}
+    history  = doc.get("messages", [])
+
+    if not isinstance(history, list):    # ⬅️ guard against bad data
+        history = []
+
+    last_proj = doc.get("last_project", {})   # (keep if you still need it)
 
     return templates.TemplateResponse(
         "chat.html",
         {
-            "request": request,
-            "history": history,
+            "request":    request,
+            "history":    history,
             "candidates": candidates,
         },
     )
 
-# ═════════════════════════════════════════════════════════════════════════════
-# /chat (JSON) – text only follow‑ups
-# ═════════════════════════════════════════════════════════════════════════════
 
+# ──────────────────────────────────────────────────────────────────────────
+# /chat  – text follow-ups (no file upload)
+# ──────────────────────────────────────────────────────────────────────────
 @app.post("/chat", response_class=JSONResponse)
 async def chat(request: Request):
-    payload = await request.json()
-    user_text = payload.get("text", "").strip()
-    selected_ids: list[str] = payload.get("candidate_ids", [])
-    user_id = "demo_user"
+    payload      = await request.json()
+    user_text    = payload.get("text", "").strip()
+    selected_ids = payload.get("candidate_ids", [])        # list[str]
+    user_id      = "demo_user"                             # TODO real session
 
-    doc = chat_find_one({"user_id": user_id}) or {}
-    history = doc.get("messages", [])
-    last_proj = doc.get("last_project", {})
+    # 1️⃣ fetch previous convo & project context
+    doc        = chat_find_one({"user_id": user_id}) or {}
+    history    = doc.get("messages", [])
+    last_proj  = doc.get("last_project", {})               # may be {}
 
-    # ── contextual blocks (project & snippets) ────────────────────────────
-    snippets: list[str] = []
+    # 2️⃣ guarantee history is a list (avoid slice KeyError)
+    if not isinstance(history, list):
+        history = []
+
+    # 3️⃣ build résumé snippets to inject (filtered by sidebar checkboxes)
+    snippets = []
     for c in last_proj.get("candidates", []):
         if not selected_ids or c["name"] in selected_ids:
-            snippets.append(f"**{c['name']}** ({c['fit']} %)\n{c['text'][:600]}…")
+            snippets.append(
+                f"**{c['name']}** ({c['fit']} %)\n{c['text'][:600]}…"
+            )
 
-    system_ctx = []
+    # 4️⃣ system-level context blocks
+    system_blocks = []
     if desc := last_proj.get("description"):
-        system_ctx.append(f"### Project\n{desc}")
+        system_blocks.append(f"### Project\n{desc}")
     if snippets:
-        system_ctx.append("### Candidate résumés\n" + "\n\n".join(snippets))
+        system_blocks.append("### Candidate résumés\n" + "\n\n".join(snippets))
 
-    # assemble messages
+    # 5️⃣ assemble message list for GPT
     messages = [
         {
             "role": "system",
             "content": (
-                "You are a recruitment assistant who can answer follow‑up "
+                "You are a recruitment assistant who can answer follow-up "
                 "questions about the project and the candidate résumés provided."
             ),
         }
     ]
-    if system_ctx:
-        messages.append({"role": "system", "content": "\n\n".join(system_ctx)})
+    if system_blocks:
+        messages.append({"role": "system", "content": "\n\n".join(system_blocks)})
 
-    messages.extend({"role": h["role"], "content": h["content"]} for h in history[-6:])
+    # last 6 legitimate turns (skip empty / malformed entries)
+    for turn in history[-6:]:
+        if isinstance(turn, dict) and turn.get("content", "").strip():
+            messages.append({"role": turn["role"], "content": turn["content"]})
+
+    # current user turn
     messages.append({"role": "user", "content": user_text})
 
-    # call GPT
+    # 6️⃣ call OpenAI
     resp = openai.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=messages,
         temperature=0.4,
         max_tokens=600,
     )
-    assistant_reply = resp.choices[0].message.content
+    assistant_reply = resp.choices[0].message.content.strip()
 
-    # persist
-    history += [
-        {"role": "user", "content": user_text},
-        {"role": "assistant", "content": assistant_reply},
-    ]
+    # 7️⃣ persist updated history
+    history.extend(
+        [
+            {"role": "user", "content": user_text},
+            {"role": "assistant", "content": assistant_reply},
+        ]
+    )
     chat_upsert(user_id, {"messages": history})
 
     return {"reply": assistant_reply}
+
 
 # ═════════════════════════════════════════════════════════════════════════════
 # /chat_action – simple buttons (top‑5, python expert)
@@ -447,23 +467,19 @@ async def match_project(
         '</div>'
     )
 
-    chats.update_one(
-    {"user_id": "demo_user"},
-    {"$set": {
-        "last_project": {
+    chat_upsert(
+        "demo_user",
+        {"$set": {"last_project": {
             "description": description,
-            "table_md": table_md,        # raw Markdown
+            "table_md":  table_md,
             "candidates": [
-                {                       # minimal info to retrieve later
-                  "name": m.metadata["name"],
-                  "fit" : m.sim_pct,
-                  "text": m.metadata["text"]
-                } for m in matches
+                {"name": m.metadata["name"],
+                 "fit":  m.sim_pct,
+                 "text": m.metadata["text"]}
+                for m in matches
             ]
-        }
-    }},
-    upsert=True
-)
+        }}}
+    )
 
     return HTMLResponse(content=html_fragment)
 
@@ -527,11 +543,6 @@ async def view_resumes(request: Request):
         return templates.TemplateResponse("resumes.html", {"request": request, "resumes": []})
 
 
-@app.post("/update_resume")
-async def update_resume_route(id: str = Form(...), name: str = Form(...), text: str = Form(...)):
-    update_resume(id, name, text)
-    return RedirectResponse("/resumes", status_code=303)
-
 @app.get("/edit_resume", response_class=HTMLResponse)
 def edit_resume(request: Request, id: str):
     """
@@ -555,13 +566,23 @@ def edit_resume(request: Request, id: str):
         {
             "request": request,
             "resume": {
-                "id":   doc["resume_id"],
-                "name": doc["name"],
-                "text": doc["text"],
+                "resume_id": doc["resume_id"],   # ← key renamed
+                "name":      doc["name"],
+                "text":      doc["text"],
             },
         },
     )
 
+@app.post("/update_resume")
+def update_resume_route(
+        resume_id: str = Form(...),   # ★ must match the hidden input’s name
+        name: str      = Form(...),
+        text: str      = Form(...)):
+    modified = update_resume(resume_id, name, text)
+    if not modified:
+        print(f"🛑 Nothing updated for resume_id {resume_id!r}")
+    return RedirectResponse("/resumes", status_code=303)
+    
 @app.post("/delete_resume")
 async def delete_resume_route(id: str = Form(...)):
     print(f"🟢 Deleting resume with ID: {id}")
