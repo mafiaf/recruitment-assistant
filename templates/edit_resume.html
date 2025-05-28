@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit résumé – {{ resume.name }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gray-50 flex flex-col">
+  <header class="px-6 py-4 bg-white shadow flex justify-between items-center">
+    <h1 class="font-semibold text-xl">Edit résumé</h1>
+    <nav class="space-x-6 text-blue-600">
+      <a href="/"        class="hover:underline">Home</a>
+      <a href="/resumes" class="hover:underline">All résumés</a>
+      <a href="/chat"    class="hover:underline">Chat</a>
+    </nav>
+  </header>
+
+  <main class="flex-1 p-6">
+    <form action="/update_resume" method="post" class="max-w-4xl space-y-6">
+      <input type="hidden" name="id" value="{{ resume.resume_id }}">
+      
+      <div>
+        <label class="block font-medium mb-1">Name</label>
+        <input name="name"
+               value="{{ resume.name }}"
+               class="w-full border rounded px-3 py-2"
+               required>
+      </div>
+
+      <div>
+        <label class="block font-medium mb-1">Text</label>
+        <textarea name="text"
+                  rows="18"
+                  class="w-full border rounded px-3 py-2 font-mono"
+                  required>{{ resume.text }}</textarea>
+      </div>
+
+      <button class="px-6 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">
+        Save changes
+      </button>
+    </form>
+  </main>
+</body>
+</html>

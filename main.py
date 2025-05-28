@@ -6,6 +6,7 @@ import re
 import uuid
 from types import SimpleNamespace
 from typing import List, Optional
+from bson import ObjectId
 
 import mammoth
 import numpy as np
@@ -16,7 +17,7 @@ from docx import Document
 from dotenv import load_dotenv
 from fastapi import Body, FastAPI, File, Form, Request, UploadFile
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -26,6 +27,7 @@ from db import (
     chat_upsert,
     resumes_all,
     resumes_by_ids,
+    resumes_collection,
 )
 from mongo_utils import update_resume, delete_resume_by_id
 from pinecone_utils import (
@@ -529,6 +531,36 @@ async def view_resumes(request: Request):
 async def update_resume_route(id: str = Form(...), name: str = Form(...), text: str = Form(...)):
     update_resume(id, name, text)
     return RedirectResponse("/resumes", status_code=303)
+
+@app.get("/edit_resume", response_class=HTMLResponse)
+def edit_resume(request: Request, id: str):
+    """
+    Fetch the résumé by either resume_id or Mongo _id.
+    """
+    doc = None
+    try:
+        # 1) try resume_id
+        doc = resumes_collection.find_one({"resume_id": id})
+        # 2) fall back to _id if the first lookup failed
+        if not doc and ObjectId.is_valid(id):
+            doc = resumes_collection.find_one({"_id": ObjectId(id)})
+    except Exception as e:
+        print("🛑 Mongo lookup failed:", e)
+
+    if not doc:                        # still nothing → 404
+        return PlainTextResponse("Résumé not found", status_code=404)
+
+    return templates.TemplateResponse(
+        "edit_resume.html",
+        {
+            "request": request,
+            "resume": {
+                "id":   doc["resume_id"],
+                "name": doc["name"],
+                "text": doc["text"],
+            },
+        },
+    )
 
 @app.post("/delete_resume")
 async def delete_resume_route(id: str = Form(...)):

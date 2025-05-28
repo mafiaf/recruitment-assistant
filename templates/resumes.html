@@ -1,17 +1,17 @@
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<title>All Résumés</title>
-<script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-50 min-h-screen flex flex-col">
-<header class="shadow px-6 py-4 bg-white flex items-center justify-between">
-  <h1 class="font-semibold text-xl">Résumés</h1>
-  <a href="/" class="text-blue-600 hover:underline">← Home</a>
-</header>
-<main class="p-6 flex-1 overflow-auto">
-  <input id="search" type="text" placeholder="Search…" class="mb-4 w-64 px-3 py-2 border rounded" />
-  <table class="w-full text-sm border rounded-xl overflow-hidden shadow" id="cv-table">
+{% extends "_base.html" %}
+{% set active = "/resumes" %}
+{% set page_title = "Résumés" %}
+
+{% block body %}
+<div class="px-6 pt-6 max-w-6xl mx-auto">
+
+  <!-- search box -->
+  <input id="search" type="text" placeholder="Search…"
+         class="mb-4 w-64 px-3 py-2 border rounded">
+
+  <!-- résumé table -->
+  <table id="cv-table"
+         class="w-full text-sm border rounded-xl overflow-hidden shadow">
     <thead>
       <tr class="bg-gray-100 text-left">
         <th class="px-4 py-2">Name</th>
@@ -23,32 +23,49 @@
       {% for r in resumes %}
       <tr class="odd:bg-white even:bg-gray-50">
         <td class="px-4 py-2">{{ r.name }}</td>
-        <td class="px-2 py-2">{{ r.text|length }} chars</td>
+        <td class="px-2 py-2">{{ r.text|length }} chars</td>
         <td class="px-2 py-2 space-x-3 text-sm">
+
+          <!-- preview -->
           <details class="inline">
             <summary class="cursor-pointer text-blue-600 hover:underline">preview</summary>
-            <pre class="p-2 bg-gray-100 max-h-60 overflow-auto whitespace-pre-wrap text-xs">{{ r.text[:1500] }}{% if r.text|length>1500 %}…{% endif %}</pre>
+            <pre class="p-2 bg-gray-100 max-h-60 overflow-auto whitespace-pre-wrap text-xs">
+{{ r.text[:1500] }}{% if r.text|length>1500 %}…{% endif %}
+            </pre>
           </details>
-          <form action="/delete_resume" method="post" class="inline">
-            <input type="hidden" name="id" value="{{ r.id }}" />
-            <button class="text-red-600 hover:underline" onclick="return confirm('Delete résumé?')">delete</button>
+
+          <!-- edit -->
+          <form action="/edit_resume" method="get" class="inline">
+            <input type="hidden" name="id" value="{{ r.id }}">
+            <button class="text-yellow-600 hover:underline">edit</button>
           </form>
+
+          <!-- delete -->
+          <form action="/delete_resume" method="post" class="inline">
+            <input type="hidden" name="id" value="{{ r.id }}">
+            <button class="text-red-600 hover:underline"
+                    onclick="return confirm('Delete résumé?')">
+              delete
+            </button>
+          </form>
+
         </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
-</main>
+</div>
+{% endblock %}
+
+{% block extra_js %}
 <script>
-// simple client‑side filter
-const rows=[...document.querySelectorAll('#cv-table tbody tr')];
-const q=document.getElementById('search');
-q.oninput=()=>{
-  const v=q.value.toLowerCase();
+// client-side filter
+const rows = [...document.querySelectorAll('#cv-table tbody tr')];
+document.getElementById('search').oninput = e=>{
+  const q = e.target.value.toLowerCase();
   rows.forEach(tr=>{
-    tr.style.display = tr.innerText.toLowerCase().includes(v)?'' : 'none';
+    tr.style.display = tr.innerText.toLowerCase().includes(q) ? '' : 'none';
   });
 };
 </script>
-</body>
-</html>
+{% endblock %}

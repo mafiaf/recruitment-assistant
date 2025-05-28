@@ -1,0 +1,21 @@
+<header
+  class="fixed top-0 inset-x-0 z-10 bg-white shadow flex items-center
+         justify-between h-14 px-6">
+  <span class="font-semibold">Recruitment Assistant</span>
+
+  {% set here = active|default('/') %}
+  <nav class="flex space-x-6 text-sm">
+    <a href="/"
+       class="{{ 'text-blue-600 font-semibold' if here=='/' else 'hover:underline' }}">
+       Home
+    </a>
+    <a href="/resumes"
+       class="{{ 'text-blue-600 font-semibold' if here=='/resumes' else 'hover:underline' }}">
+       Résumés
+    </a>
+    <a href="/chat"
+       class="{{ 'text-blue-600 font-semibold' if here=='/chat' else 'hover:underline' }}">
+       Chat
+    </a>
+  </nav>
+</header>

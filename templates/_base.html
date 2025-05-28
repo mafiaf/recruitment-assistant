@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<script src="https://cdn.tailwindcss.com"></script>
+<body class="min-h-screen bg-gray-100">
+  <header class="fixed top-0 inset-x-0 h-14 bg-white shadow flex items-center justify-between px-6">
+    <span class="font-semibold">Recruitment Assistant</span>
+    <nav class="space-x-6 text-sm">
+      <a href="/"            class="{{ 'text-blue-600 font-semibold' if active=='/'        else 'text-gray-600 hover:text-blue-600' }}">Home</a>
+      <a href="/resumes"     class="{{ 'text-blue-600 font-semibold' if active=='/resumes' else 'text-gray-600 hover:text-blue-600' }}">Résumés</a>
+      <a href="/chat"        class="{{ 'text-blue-600 font-semibold' if active=='/chat'    else 'text-gray-600 hover:text-blue-600' }}">Chat</a>
+    </nav>
+  </header>
+
+  <main class="pt-16">
+    <h1 class="text-2xl font-semibold px-6 mb-4">{{ page_title }}</h1>
+    {% block body %}{% endblock %}
+  </main>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
