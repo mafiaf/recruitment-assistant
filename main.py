@@ -873,6 +873,23 @@ def create_user_admin(
     create_user(username, password, role)
     return RedirectResponse("/admin/users", status_code=303)
 
+@app.post("/admin/users/delete", dependencies=[Depends(require_owner)])
+def delete_user_admin(
+        username: str = Form(...),
+        current   = Depends(require_owner)):             # you are the owner
+    """
+    Deletes the account given by *username*.  
+    • Owner may not delete themselves to avoid lock-out.
+    """
+    if username == current["username"]:
+        raise HTTPException(400, "You cannot delete your own owner account")
+
+    res = users_coll.delete_one({"username": username})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "User not found")
+
+    return RedirectResponse("/admin/users", status_code=303)
+
 
 @app.get("/profile", response_class=HTMLResponse, dependencies=[Depends(require_login)])
 def profile(request: Request, user = Depends(get_current_user)):
