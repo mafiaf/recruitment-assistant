@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 
-<body class="min-h-screen bg-gray-100 font-sans">
+<body class="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 font-sans">
   {# ------------------------------------------------------------- #
      expect three template variables to be present:
 
@@ -18,44 +18,44 @@
 
      (pass  user=current_user  whenever you call TemplateResponse)
   # ------------------------------------------------------------- #}
-  <header class="fixed top-0 inset-x-0 h-14 bg-gradient-to-r from-blue-800 to-blue-500 shadow flex items-center justify-between px-6 text-white">
+  <header class="fixed top-0 inset-x-0 h-14 bg-gradient-to-r from-blue-900 to-blue-700 shadow flex items-center justify-between px-6 text-white">
     <span class="font-semibold">Recruitment Assistant</span>
 
     <nav class="space-x-6 text-sm">
       {# regular links #}
       <a href="/"
          class="{{ 'text-white font-semibold' if active=='/' else
-                  'text-blue-100 hover:text-white' }}">Home</a>
+                  'text-blue-200 hover:text-white' }}">Home</a>
 
       <a href="/resumes"
          class="{{ 'text-white font-semibold' if active=='/resumes' else
-                  'text-blue-100 hover:text-white' }}">Résumés</a>
+                  'text-blue-200 hover:text-white' }}">Résumés</a>
 
       <a href="/chat"
          class="{{ 'text-white font-semibold' if active=='/chat' else
-                  'text-blue-100 hover:text-white' }}">Chat</a>
+                  'text-blue-200 hover:text-white' }}">Chat</a>
 
       {# profile for *any* logged-in user #}
       {% if user %}
         <a href="/profile"
            class="{{ 'text-white font-semibold' if active=='/profile' else
-                    'text-blue-100 hover:text-white' }}">Profile</a>
+                    'text-blue-200 hover:text-white' }}">Profile</a>
       {% endif %}
 
       {# owner-only admin page #}
       {% if user and user.role == 'owner' %}
         <a href="/admin/users"
            class="{{ 'text-white font-semibold' if active=='/admin/users' else
-                    'text-blue-100 hover:text-white' }}">Users</a>
+                    'text-blue-200 hover:text-white' }}">Users</a>
       {% endif %}
 
       {# login / logout #}
       {% if user %}
-        <a href="/logout" class="text-blue-100 hover:text-white">Logout</a>
+        <a href="/logout" class="text-blue-200 hover:text-white">Logout</a>
       {% else %}
         <a href="/login"
            class="{{ 'text-white font-semibold' if active=='/login' else
-                    'text-blue-100 hover:text-white' }}">Login</a>
+                    'text-blue-200 hover:text-white' }}">Login</a>
       {% endif %}
     </nav>
   </header>
