@@ -71,6 +71,9 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # reuse your existing `db` from mongo_utils / main.py
 users_coll = db["users"]
 
+# default password used when resetting user accounts
+DEFAULT_PASSWORD = os.getenv("DEFAULT_PASS", "changeme!")
+
 # ── helpers ────────────────────────────────────────────────────────────────
 def render(request: Request,
            template_name: str,
@@ -903,6 +906,39 @@ def delete_user_admin(
     if res.deleted_count == 0:
         raise HTTPException(404, "User not found")
 
+    return RedirectResponse("/admin/users", status_code=303)
+
+
+@app.get("/admin/users/{username}/edit", response_class=HTMLResponse,
+         dependencies=[Depends(require_owner)])
+def edit_user_form(request: Request, username: str):
+    user = users_coll.find_one({"username": username}, {"_id": 0, "hashed_password": 0})
+    if not user:
+        raise HTTPException(404, "User not found")
+    return render(request, "edit_user.html",
+                  {"user": user},
+                  page_title="Edit user", active="/admin/users")
+
+
+@app.post("/admin/users/{username}/edit", dependencies=[Depends(require_owner)])
+def update_user_admin(username: str, new_username: str = Form(...)):
+    if username != new_username:
+        if users_coll.find_one({"username": new_username}):
+            raise HTTPException(400, "Username already exists")
+        res = users_coll.update_one({"username": username}, {"$set": {"username": new_username}})
+        if res.matched_count == 0:
+            raise HTTPException(404, "User not found")
+    return RedirectResponse("/admin/users", status_code=303)
+
+
+@app.post("/admin/users/{username}/reset", dependencies=[Depends(require_owner)])
+def reset_user_password(username: str):
+    res = users_coll.update_one(
+        {"username": username},
+        {"$set": {"hashed_password": pwd_context.hash(DEFAULT_PASSWORD)}}
+    )
+    if res.matched_count == 0:
+        raise HTTPException(404, "User not found")
     return RedirectResponse("/admin/users", status_code=303)
 
 
