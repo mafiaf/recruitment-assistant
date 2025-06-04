@@ -1,41 +1,80 @@
-# mongo_utils.py  –  “lazy” connection, non-blocking startup
-import os, certifi, logging
+# mongo_utils.py – environment-aware Mongo setup (dev vs prod)
+import os
+import certifi
+import logging
+from datetime import datetime
+from types import SimpleNamespace
 from typing import List
+
 from dotenv import load_dotenv
 from pymongo import MongoClient, errors
 from bson import ObjectId
-from types import SimpleNamespace
 from passlib.hash import bcrypt
-from datetime import datetime
+
 from pinecone_utils import add_resume_to_pinecone
 
+env_file = ".env.production" if os.getenv("ENV", "development").lower() == "production" else ".env.development"
 load_dotenv()
-MONGO_URI = os.getenv("MONGO_URI")                 # Atlas SRV string
-DB_NAME   = os.getenv("MONGO_DB_NAME", "recruitment_app")
 
 # ------------------------------------------------------------------ #
-# 1) create client but DO NOT connect yet (connect=False)            #
+# 0) environment & configuration                                     #
 # ------------------------------------------------------------------ #
-client = MongoClient(
-    MONGO_URI,
-    connect=False,                    # <- no handshake at import time
-    tls=True,
-    tlsCAFile=certifi.where(),
-    serverSelectionTimeoutMS=5_000,   # 5 s max when we *do* touch Mongo
-)
+ENV = os.getenv("ENV", "development").lower()
 
-db = client[DB_NAME]
+MONGO_URI = os.environ["MONGO_URI"]            # Atlas SRV string for both envs
+DB_NAME   = "recruitment_app" if ENV == "production" else "recruitment_app_dev"
+
+if ENV == "production":
+    client = MongoClient(
+        MONGO_URI,
+        tls=True,
+        tlsCAFile=certifi.where(),
+        serverSelectionTimeoutMS=5_000,
+    )
+else:  # development – local Mongo, no TLS
+    client = MongoClient(
+        MONGO_URI,          # now "mongodb://localhost:27017"
+        connect=False,
+        tls=False,
+        serverSelectionTimeoutMS=5_000,
+    )
+
+db       = client[DB_NAME]
 _resumes = db["resumes"]
-print(f"🟢 mongo_utils ready – DB: {DB_NAME} / collection: {_resumes.name}")
+_users   = db["users"]
+
+print(f"🟢 mongo_utils ready – env:{ENV} DB:{DB_NAME} collection:{_resumes.name}")
+
+# create unique index only in production
+if ENV == "production":
+    try:
+        _users.create_index("username", unique=True)
+    except errors.PyMongoError as exc:
+        logging.error("🛑 could not create users.username index")
+        logging.error(exc)
 
 # ------------------------------------------------------------------ #
-# 2) small wrapper: first call triggers handshake; if it fails we   #
-#    flip a global flag so later calls just return harmless defaults #
+# 1) resilient guard layer                                           #
 # ------------------------------------------------------------------ #
 _MONGO_DOWN = False
 
-_users = db["users"]
+def _guard(op: str) -> bool:
+    global _MONGO_DOWN
+    if _MONGO_DOWN:
+        logging.warning(f"⚠️  mongo down – {op} returns empty/0")
+        return True
+    try:
+        client.admin.command("ping")
+        return False
+    except errors.PyMongoError as exc:
+        logging.error("🛑 Mongo unreachable – switching to NO-DB mode")
+        logging.error(exc)
+        _MONGO_DOWN = True
+        return True
 
+# ------------------------------------------------------------------ #
+# 2) CRUD helpers                                                    #
+# ------------------------------------------------------------------ #
 def get_user(username: str):
     return _users.find_one({"username": username})
 
@@ -53,24 +92,6 @@ def verify_password(username: str, pw: str) -> dict | None:
         return doc
     return None
 
-def _guard(op: str):
-    global _MONGO_DOWN
-    if _MONGO_DOWN:
-        logging.warning(f"⚠️  mongo down – {op} returns empty/0")
-        return True
-    try:
-        # cheapest “are we connected” check
-        client.admin.command("ping")
-        return False
-    except errors.PyMongoError as e:
-        logging.error("🛑  Mongo unreachable, switching to NO-DB mode")
-        logging.error(e)
-        _MONGO_DOWN = True
-        return True
-
-# ------------------------------------------------------------------ #
-# 3) helpers                                                         #
-# ------------------------------------------------------------------ #
 def get_all_resumes() -> List[dict]:
     if _guard("get_all_resumes"):
         return []
@@ -84,31 +105,20 @@ def get_resumes_by_ids(id_list: List[str]):
         SimpleNamespace(
             id=doc["resume_id"],
             metadata={"name": doc["name"], "text": doc["text"]},
-        )
-        for doc in docs
+        ) for doc in docs
     ]
 
 def update_resume(resume_id: str, name: str, text: str) -> int:
-    """
-    Update Mongo *and* Pinecone.  
-      • If only the name changed, we upsert metadata only  
-      • If the text changed too, we re-embed & upsert the full vector
-    Returns: number of Mongo documents modified (0 or 1)
-    """
-    # 1) look up current doc to see whether text really changed
     old = _resumes.find_one({"resume_id": resume_id})
     if not old:
         return 0
 
-    # 2) update Mongo
     res = _resumes.update_one(
         {"resume_id": resume_id},
         {"$set": {"name": name, "text": text}},
     )
 
-    # 3) update Pinecone
     if text.strip() != old.get("text", ""):
-        # text changed → recompute embedding & full upsert
         add_resume_to_pinecone(
             text,
             resume_id,
@@ -116,7 +126,6 @@ def update_resume(resume_id: str, name: str, text: str) -> int:
             namespace="resumes",
         )
     else:
-        # only name changed → metadata-only upsert (lighter / cheaper)
         from pinecone_utils import index
         index.upsert(
             vectors=[(resume_id, None, {"name": name})],
@@ -130,5 +139,3 @@ def delete_resume_by_id(resume_id: str) -> int:
         return 0
     res = _resumes.delete_one({"resume_id": resume_id.strip()})
     return res.deleted_count
-
-
