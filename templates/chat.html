@@ -4,10 +4,10 @@
 {% set page_title = "Chat" %}
 
 {% block body %}
-<div class="flex h-[calc(100vh-4rem)] bg-gray-50">
+<div class="flex h-[calc(100vh-4rem)] bg-gradient-to-br from-gray-50 to-gray-100">
 
   {# ── sidebar ────────────────────────────────────────────────── #}
-  <aside class="w-64 border-r bg-white p-4 overflow-auto">
+  <aside class="w-64 border-r border-gray-200 bg-white/70 backdrop-blur p-4 overflow-auto">
     <h2 class="font-semibold mb-2">Candidates</h2>
     <input id="filter" type="text"
            placeholder="filter…" 
@@ -38,7 +38,7 @@
     </div>
 
     {# input row #}
-    <div class="border-t p-4 flex items-center gap-2">
+    <div class="border-t bg-white/70 backdrop-blur p-4 flex items-center gap-2">
       <button id="attach-btn" title="Upload project"
               class="p-2 rounded bg-gray-200">📎</button>
       <input id="project-file" type="file" accept=".pdf,.docx" class="hidden">
