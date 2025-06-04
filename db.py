@@ -1,4 +1,3 @@
-# db.py  (replace the file contents)
 
 import os, certifi, logging
 from datetime import datetime
@@ -8,31 +7,32 @@ from pymongo import MongoClient, errors
 from bson import ObjectId
 from types import SimpleNamespace
 
-load_dotenv()
+# ── pick the right .env file ─────────────────────────────────────────
+env_file = ".env.production" if os.getenv("ENV", "development").lower() == "production" else ".env.development"
+load_dotenv(env_file)                      # ← now we load that file only
+# ─────────────────────────────────────────────────────────────────────
 
 MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME   = os.getenv("MONGO_DB_NAME", "recruitment_app")
 
-# ------------------------------------------------------------------ #
-# lazy client – no handshake until first real op                     #
-# ------------------------------------------------------------------ #
+# decide TLS once
+TLS_ON = MONGO_URI.startswith("mongodb+srv://")
+
 client = MongoClient(
     MONGO_URI,
-    connect=False,
-    tls=True,
-    tlsCAFile=certifi.where(),
-    serverSelectionTimeoutMS=5_000,   # fail fast
+    connect=False,                    # lazy handshake
+    tls=TLS_ON,
+    tlsCAFile=certifi.where() if TLS_ON else None,
+    serverSelectionTimeoutMS=5_000,
 )
 
-db = client[DB_NAME]
-chats  = db["chats"]
+db      = client[DB_NAME]
+chats   = db["chats"]
 resumes_collection = db["resumes"]
 
-_MONGO_DOWN = False            # global flag we flip after first failure
+_MONGO_DOWN = False
 
 def _guard(op: str) -> bool:
-    """Return True if Mongo is down – calling code should return a harmless
-    default instead of querying."""
     global _MONGO_DOWN
     if _MONGO_DOWN:
         logging.warning(f"⚠️  mongo down – {op} skipped")
@@ -41,7 +41,7 @@ def _guard(op: str) -> bool:
         client.admin.command("ping")
         return False
     except errors.PyMongoError as e:
-        logging.error("🛑  Mongo unreachable, NO-DB mode")
+        logging.error("🛑  Mongo unreachable – NO-DB mode")
         logging.error(e)
         _MONGO_DOWN = True
         return True

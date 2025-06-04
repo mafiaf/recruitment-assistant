@@ -3,21 +3,24 @@ from dotenv import load_dotenv
 from pinecone import Pinecone, ServerlessSpec
 import openai
 
+env_file = ".env.production" if os.getenv("ENV", "development").lower() == "production" else ".env.development"
 load_dotenv()
 
-# Load API keys
-openai.api_key = os.getenv("OPENAI_API_KEY")
-PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-PINECONE_ENV = os.getenv("PINECONE_ENV")
+ENV = os.getenv("ENV", "development").lower()
 
-# Initialize Pinecone client
-pc = Pinecone(api_key=PINECONE_API_KEY)
-INDEX_NAME = "resumes-index"
+openai.api_key = os.environ["OPENAI_API_KEY"]
+pc  = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
 
-# Create index if it doesn't exist
+# picks resumes-index for prod, resumes-dev for dev unless overridden
+INDEX_NAME = os.getenv(
+    "PINECONE_INDEX",
+    "resumes-index" if ENV == "production" else "resumes-dev"
+)
+PINECONE_ENV = os.environ["PINECONE_ENV"]
+
 def _ensure_index():
     if INDEX_NAME not in pc.list_indexes().names():
-        region = "-".join(PINECONE_ENV.split("-")[:-1])  # Extract region e.g. "europe-west4"
+        region = "-".join(PINECONE_ENV.split("-")[:-1])  # eg "europe-west4"
         pc.create_index(
             name=INDEX_NAME,
             dimension=1536,
@@ -26,54 +29,62 @@ def _ensure_index():
         )
 
 _ensure_index()
-
-# Connect to the index
 index = pc.Index(INDEX_NAME)
 
-# 🔹 Get embedding for a text string
+# ------------------------------------------------------------------ #
+# 2) helpers                                                         #
+# ------------------------------------------------------------------ #
+
+
 def embed_text(text: str):
+    """Return an OpenAI embedding or None on failure."""
     try:
         response = openai.embeddings.create(
             model="text-embedding-3-small",
-            input=text
+            input=text,
         )
         return response.data[0].embedding
     except Exception as e:
         print("🛑 Error generating embedding:", e)
         return None
 
-# 🔹 Add résumé vector to Pinecone
-def add_resume_to_pinecone(text: str, candidate_id: str, metadata: dict, namespace: str = "resumes"):
-    """
-    Inserts or updates a résumé embedding into Pinecone under the given namespace.
-    """
+
+DEFAULT_NAMESPACE = "resumes"  # namespace stays the same in both envs
+
+
+def add_resume_to_pinecone(
+    text: str,
+    candidate_id: str,
+    metadata: dict,
+    namespace: str = DEFAULT_NAMESPACE,
+):
+    """Insert or update a résumé vector in Pinecone."""
     vector = embed_text(text)
     if not vector or len(vector) != 1536:
         print(f"🛑 Invalid embedding length: {len(vector) if vector else 'None'}")
         return
 
     try:
-        print(f"🟢 Upserting to namespace '{namespace}': {candidate_id}")
+        print(f"🟢 Upserting to index '{INDEX_NAME}' namespace '{namespace}': {candidate_id}")
         index.upsert(
             vectors=[{
                 "id": candidate_id,
                 "values": vector,
-                "metadata": metadata
+                "metadata": metadata,
             }],
-            namespace=namespace
+            namespace=namespace,
         )
         print("✅ Upsert complete")
-        stats = index.describe_index_stats()
-        print("📊 Index stats:", stats)
     except Exception as e:
         print("🛑 Pinecone upsert failed:", e)
 
-# 🔹 Search best candidates by matching to a project
-def search_best_resumes(project_description: str, top_k: int = 5, namespace: str = "resumes"):
-    """
-    Queries Pinecone for the top_k resumes most similar to the project_description.
-    Returns a list of matches with metadata.
-    """
+
+def search_best_resumes(
+    project_description: str,
+    top_k: int = 5,
+    namespace: str = DEFAULT_NAMESPACE,
+):
+    """Return top_k matches for the given description."""
     vector = embed_text(project_description)
     if not vector:
         return []
@@ -82,21 +93,19 @@ def search_best_resumes(project_description: str, top_k: int = 5, namespace: str
             vector=vector,
             top_k=top_k,
             include_metadata=True,
-            namespace=namespace
+            namespace=namespace,
         )
         return results.matches
     except Exception as e:
         print("🛑 Pinecone search failed:", e)
         return []
 
-# 🔹 Delete a résumé from Pinecone
-def delete_resume_from_pinecone(resume_id: str, namespace: str = "resumes"):
-    """
-    Deletes the vector with the given resume_id from Pinecone namespace.
-    """
+
+def delete_resume_from_pinecone(resume_id: str, namespace: str = DEFAULT_NAMESPACE):
+    """Delete a résumé vector by id."""
     try:
-        print(f"🟢 Deleting from Pinecone: {resume_id} namespace={namespace}")
+        print(f"🟢 Deleting from index '{INDEX_NAME}' namespace '{namespace}': {resume_id}")
         index.delete(ids=[resume_id], namespace=namespace)
-        print(f"✅ Deleted from Pinecone: {resume_id}")
+        print("✅ Deleted from Pinecone: {resume_id}")
     except Exception as e:
         print(f"🛑 Error deleting from Pinecone: {resume_id} - {e}")

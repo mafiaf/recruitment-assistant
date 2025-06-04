@@ -35,7 +35,8 @@ from db import (
     resumes_collection,
 )
 
-from mongo_utils import update_resume, delete_resume_by_id, db
+from mongo_utils import db, _users, update_resume, delete_resume_by_id, ENV, _guard
+from pymongo import errors
 from pinecone_utils import (
     add_resume_to_pinecone,
     embed_text,
@@ -43,7 +44,17 @@ from pinecone_utils import (
     search_best_resumes,
 )
 
+env_file = ".env.production" if os.getenv("ENV", "development").lower() == "production" else ".env.development"
 load_dotenv()
+
+if ENV == "production":
+    _users.create_index("username", unique=True)
+else:
+    try:
+        _users.create_index("username", unique=True)
+    except errors.PyMongoError:
+        pass
+
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = FastAPI()
@@ -59,7 +70,6 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # reuse your existing `db` from mongo_utils / main.py
 users_coll = db["users"]
-users_coll.create_index("username", unique=True)
 
 # ── helpers ────────────────────────────────────────────────────────────────
 def render(request: Request,
@@ -144,14 +154,19 @@ def require_owner(user=Depends(require_login)):
     return user
 
 @app.on_event("startup")
-def seed_owner():
+def seed_owner() -> None:
+    # if Mongo is unreachable in dev just skip the seeding step
+    if _guard("seed_owner"):
+        print("⚠️  Mongo not reachable – owner account not seeded")
+        return
+
     if users_coll.count_documents({"role": "owner"}) == 0:
         create_user(
             os.getenv("OWNER_USER", "owner"),
             os.getenv("OWNER_PASS", "changeme!"),
-            role="owner",
+            role="owner"
         )
-        print("🟢 Created initial owner account")    
+        print("🟢 Created initial owner account")
 
 # ═════════════════════════════════════════════════════════════════════════════
 # PDF & DOCX extraction helpers
