@@ -4,18 +4,20 @@
   <meta charset="UTF-8">
   <title>Edit résumé – {{ resume.name }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/static/styles.css">
 </head>
-<body class="min-h-screen bg-gray-50 flex flex-col">
-  <header class="px-6 py-4 bg-white shadow flex justify-between items-center">
+<body class="min-h-screen bg-gray-50 flex flex-col font-sans">
+  <header class="px-6 py-4 bg-gradient-to-r from-blue-800 to-blue-500 text-white shadow flex justify-between items-center">
     <h1 class="font-semibold text-xl">Edit résumé</h1>
-    <nav class="space-x-6 text-blue-600">
+    <nav class="space-x-6 text-white">
       <a href="/"        class="hover:underline">Home</a>
       <a href="/resumes" class="hover:underline">All résumés</a>
       <a href="/chat"    class="hover:underline">Chat</a>
     </nav>
   </header>
 
-  <main class="flex-1 p-6">
+  <main class="flex-1 p-6 m-6 bg-white/70 backdrop-blur rounded-xl shadow">
     <form action="/update_resume" method="post" class="max-w-4xl space-y-6">
       <input type="hidden" name="resume_id" value="{{ resume.resume_id }}">
       
