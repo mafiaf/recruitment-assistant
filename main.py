@@ -278,6 +278,17 @@ def slugify(val: str) -> str:
         or str(uuid.uuid4())          # absolute fallback
     )
 
+
+def extract_years_requirement(text: str) -> int | None:
+    """Return the first integer that appears before 'year' or 'years'."""
+    m = re.search(r"(\d+)\s*\+?\s*(?=years?)", text, flags=re.I)
+    if m:
+        try:
+            return int(m.group(1))
+        except ValueError:
+            return None
+    return None
+
 # ── upload validation constants --------------------------------------------
 ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 # default max file size: 5 MB
@@ -334,7 +345,16 @@ async def upload_resume(
 
         display_name = guess_name(name, "", text)
         resume_id = slugify(display_name)
-        add_resume_to_pinecone(text, resume_id, {"name": display_name, "text": text, "tags": tag_list}, "resumes")
+        meta = {"name": display_name, "text": text}
+        if tag_list:
+            meta["tags"] = tag_list
+        if skill_list:
+            meta["skills"] = skill_list
+        if loc_val:
+            meta["location"] = loc_val
+        if years_val is not None:
+            meta["years"] = years_val
+        add_resume_to_pinecone(text, resume_id, meta, "resumes")
         doc = {"resume_id": resume_id, "name": display_name, "text": text}
         if tag_list:
             doc["tags"] = tag_list
@@ -367,7 +387,16 @@ async def upload_resume(
             # fallback: text field without file
             display_name = guess_name(name or "", "", text)
             resume_id = slugify(display_name)
-            add_resume_to_pinecone(text, resume_id, {"name": display_name, "text": text, "tags": tag_list}, "resumes")
+            meta = {"name": display_name, "text": text}
+            if tag_list:
+                meta["tags"] = tag_list
+            if skill_list:
+                meta["skills"] = skill_list
+            if loc_val:
+                meta["location"] = loc_val
+            if years_val is not None:
+                meta["years"] = years_val
+            add_resume_to_pinecone(text, resume_id, meta, "resumes")
             doc = {"resume_id": resume_id, "name": display_name, "text": text}
             if tag_list:
                 doc["tags"] = tag_list
@@ -396,7 +425,16 @@ async def upload_resume(
                 continue
             display_name = guess_name(name or "", filename, file_text)
             resume_id = slugify(display_name)
-            add_resume_to_pinecone(file_text, resume_id, {"name": display_name, "text": file_text, "tags": tag_list}, "resumes")
+            meta = {"name": display_name, "text": file_text}
+            if tag_list:
+                meta["tags"] = tag_list
+            if skill_list:
+                meta["skills"] = skill_list
+            if loc_val:
+                meta["location"] = loc_val
+            if years_val is not None:
+                meta["years"] = years_val
+            add_resume_to_pinecone(file_text, resume_id, meta, "resumes")
             doc = {"resume_id": resume_id, "name": display_name, "text": file_text}
             if tag_list:
                 doc["tags"] = tag_list
@@ -520,11 +558,26 @@ async def match_project(
         )
 
     # 4️⃣ build GPT prompt ----------------------------------------------------
+    expected_years = extract_years_requirement(description)
     snippets = []
+    years_info = []
     for m in matches:
         tags_str = ", ".join(m.metadata.get('tags', []))
         tag_part = f" [tags: {tags_str}]" if tags_str else ""
-        snippet = f"- **{m.metadata['name']}**{tag_part}: {m.metadata['text'].replace(chr(10),' ')[:300]}…"
+        years = m.metadata.get('years')
+        if expected_years and years is not None:
+            years_part = f" ({years}/{expected_years} yrs)"
+            years_info.append(f"{years}/{expected_years}")
+        elif years is not None:
+            years_part = f" ({years} yrs)"
+            years_info.append(str(years))
+        else:
+            years_part = ""
+            years_info.append("—" if expected_years else "—")
+        snippet = (
+            f"- **{m.metadata['name']}**{years_part}{tag_part}: "
+            f"{m.metadata['text'].replace(chr(10),' ')[:300]}…"
+        )
         snippets.append(snippet)
     candidates_block = "\n".join(snippets)
 
@@ -548,6 +601,8 @@ async def match_project(
         "what to **add**, **reword**, **reorder** or **strengthen** in their résumé "
         "(new bullet, certification, project, keywords) to boost their fit."
     )
+    if expected_years:
+        rubric += f"\n\nTarget experience: around {expected_years} years"
 
     prompt = (
         f"Project description (focus on role / domain / experience):\n"
@@ -587,34 +642,33 @@ async def match_project(
         if len(cells) >= 4:
             name, fit, why, improve = cells[:4]
             rows.append(
-                {"name": name,
-                "fit":  fit.rstrip("%"),
-                "why":  why,
-                "improve": improve}
+                {
+                    "name": name,
+                    "fit": fit.rstrip("%"),
+                    "why": why,
+                    "improve": improve,
+                }
             )
+
+    # add experience column if lengths match
+    if rows and len(rows) == len(years_info):
+        for r, y in zip(rows, years_info):
+            r["years"] = y
 
     # fallback – if parsing still fails just show raw markdown
     if not rows:
         table_html = "<pre style='white-space:pre-wrap'>" + table_md + "</pre>"
     else:
-        table_html = templates.get_template("resume_rank_table.html").render(rows=rows)
+        table_html = templates.get_template("resume_rank_table.html").render(
+            rows=rows,
+            expected_years=expected_years,
+        )
 
         # 6️⃣ render ---------------------------------------------------
         # Log raw Markdown in the server console for debugging
 
     logger.debug("\n— GPT table markdown —\n%s\n——————————————", table_md)
 
-    if rows:
-        table_html = templates.get_template(
-            "resume_rank_table.html"
-        ).render(rows=rows)
-    else:
-        # fall‑back to raw markdown if parsing failed
-        table_html = (
-            "<pre style='white-space:pre-wrap'>" +
-            table_md +
-            "</pre>"
-        )
 
     html_fragment = (
         '<div class="bubble assist"><strong>Assistant:</strong><br>'
@@ -634,7 +688,7 @@ async def match_project(
         ],
     }
 
-    add_project_history(user_id, project)
+    await add_project_history(user_id, project)
 
     return HTMLResponse(content=html_fragment)
 
