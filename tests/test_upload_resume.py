@@ -44,3 +44,30 @@ def test_upload_resume_file_upload(client, monkeypatch):
     assert resp.status_code == 200
     assert len(stored) == 1
     assert stored[0]["text"] == "PDF text"
+
+
+def test_upload_resume_invalid_extension(client, monkeypatch):
+    c, stored = client
+
+    def fail(*a, **k):
+        raise AssertionError("extract_text should not be called")
+
+    monkeypatch.setattr(main, "extract_text", fail)
+    files = {"file": ("resume.txt", b"ignored")}
+    resp = c.post("/upload_resume", files=files)
+    assert resp.status_code == 200
+    assert len(stored) == 0
+
+
+def test_upload_resume_too_large(client, monkeypatch):
+    c, stored = client
+    monkeypatch.setattr(main, "MAX_FILE_SIZE", 10)
+
+    def fail(*a, **k):
+        raise AssertionError("extract_text should not be called")
+
+    monkeypatch.setattr(main, "extract_text", fail)
+    files = {"file": ("resume.pdf", b"x" * 20)}
+    resp = c.post("/upload_resume", files=files)
+    assert resp.status_code == 200
+    assert len(stored) == 0
