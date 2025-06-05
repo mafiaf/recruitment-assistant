@@ -24,6 +24,24 @@
     </div>
 
     <div>
+      <label class="block font-medium mb-1">Location</label>
+      <input name="location" value="{{ resume.location }}"
+             class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    </div>
+
+    <div>
+      <label class="block font-medium mb-1">Skills (comma separated)</label>
+      <input name="skills" value="{{ resume.skills }}"
+             class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    </div>
+
+    <div>
+      <label class="block font-medium mb-1">Years of Experience</label>
+      <input type="number" name="years" value="{{ resume.years }}"
+             class="w-32 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    </div>
+
+    <div>
       <label class="block font-medium mb-1">Text</label>
       <textarea name="text"
                 rows="18"

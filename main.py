@@ -6,6 +6,7 @@ import re
 import uuid
 from types import SimpleNamespace
 from typing import List, Optional
+from urllib.parse import urlencode
 from bson import ObjectId
 
 import mammoth
@@ -289,6 +290,9 @@ async def upload_resume(
     file: List[UploadFile] | UploadFile | None = File(None),
     name: str | None = Form(None),
     text: str | None = Form(None),
+    skills: str | None = Form(None),
+    location: str | None = Form(None),
+    years: int | None = Form(None),
     resume: ResumeUpload | None = Body(None),
     user=Depends(require_login),
 ):
@@ -296,10 +300,20 @@ async def upload_resume(
 
     added_names: List[str] = []
 
+    def parse_skills(val):
+        if not val:
+            return []
+        if isinstance(val, list):
+            return [s.strip() for s in val if s.strip()]
+        return [s.strip() for s in str(val).split(',') if s.strip()]
+
     # ── JSON payload -------------------------------------------------------
     if resume is not None:
         name = resume.name or name or ""
         text = (resume.text or text or "").strip()
+        skill_list = parse_skills(resume.skills)
+        loc_val = resume.location or location or ""
+        years_val = resume.years if resume.years is not None else years
 
         if not text:
             return await render(
@@ -312,8 +326,15 @@ async def upload_resume(
         display_name = guess_name(name, "", text)
         resume_id = slugify(display_name)
         add_resume_to_pinecone(text, resume_id, {"name": display_name, "text": text}, "resumes")
+        doc = {"resume_id": resume_id, "name": display_name, "text": text}
+        if skill_list:
+            doc["skills"] = skill_list
+        if loc_val:
+            doc["location"] = loc_val
+        if years_val is not None:
+            doc["years"] = years_val
         try:
-            await resumes_collection.insert_one({"resume_id": resume_id, "name": display_name, "text": text})
+            await resumes_collection.insert_one(doc)
         except Exception as e:  # pragma: no cover
             logger.error("Mongo insert failed: %s", e)
         added_names.append(display_name)
@@ -326,13 +347,24 @@ async def upload_resume(
         elif file is not None:
             files = [file]
 
+        skill_list = parse_skills(skills)
+        loc_val = location or ""
+        years_val = years
+
         if not files and text:
             # fallback: text field without file
             display_name = guess_name(name or "", "", text)
             resume_id = slugify(display_name)
             add_resume_to_pinecone(text, resume_id, {"name": display_name, "text": text}, "resumes")
+            doc = {"resume_id": resume_id, "name": display_name, "text": text}
+            if skill_list:
+                doc["skills"] = skill_list
+            if loc_val:
+                doc["location"] = loc_val
+            if years_val is not None:
+                doc["years"] = years_val
             try:
-                await resumes_collection.insert_one({"resume_id": resume_id, "name": display_name, "text": text})
+                await resumes_collection.insert_one(doc)
             except Exception as e:  # pragma: no cover
                 logger.error("Mongo insert failed: %s", e)
             added_names.append(display_name)
@@ -351,8 +383,15 @@ async def upload_resume(
             display_name = guess_name(name or "", filename, file_text)
             resume_id = slugify(display_name)
             add_resume_to_pinecone(file_text, resume_id, {"name": display_name, "text": file_text}, "resumes")
+            doc = {"resume_id": resume_id, "name": display_name, "text": file_text}
+            if skill_list:
+                doc["skills"] = skill_list
+            if loc_val:
+                doc["location"] = loc_val
+            if years_val is not None:
+                doc["years"] = years_val
             try:
-                await resumes_collection.insert_one({"resume_id": resume_id, "name": display_name, "text": file_text})
+                await resumes_collection.insert_one(doc)
             except Exception as e:  # pragma: no cover
                 logger.error("Mongo insert failed: %s", e)
             added_names.append(display_name)
@@ -585,11 +624,29 @@ RESUMES_PER_PAGE = 20
 
 
 @app.get("/resumes", response_class=HTMLResponse)
-async def list_resumes(request: Request, page: int = 1, user=Depends(require_login)):
+async def list_resumes(
+    request: Request,
+    page: int = 1,
+    skill: str = "",
+    location: str = "",
+    min_years: int | None = None,
+    max_years: int | None = None,
+    user=Depends(require_login),
+):
     """Paginated résumé overview. Works even when MongoDB is offline."""
+    filters = {}
+    if skill:
+        filters["skill"] = skill
+    if location:
+        filters["location"] = location
+    if min_years is not None:
+        filters["min_years"] = min_years
+    if max_years is not None:
+        filters["max_years"] = max_years
+
     try:
-        docs = await resumes_page(page, RESUMES_PER_PAGE)
-        total = await resumes_count()
+        docs = await resumes_page(page, RESUMES_PER_PAGE, filters)
+        total = await resumes_count(filters)
     except Exception as e:  # pragma: no cover
         logger.warning("resumes_page() failed: %s", e)
         docs = []
@@ -612,12 +669,28 @@ async def list_resumes(request: Request, page: int = 1, user=Depends(require_log
         )
 
     pages = (total + RESUMES_PER_PAGE - 1) // RESUMES_PER_PAGE
+    query = {}
+    if skill:
+        query["skill"] = skill
+    if location:
+        query["location"] = location
+    if min_years is not None:
+        query["min_years"] = min_years
+    if max_years is not None:
+        query["max_years"] = max_years
+    qs = urlencode(query)
+
     ctx = {
         "resumes": resumes_for_tpl,
         "page": page,
         "pages": pages,
         "prev_page": page - 1 if page > 1 else None,
         "next_page": page + 1 if page < pages else None,
+        "skill": skill,
+        "location": location,
+        "min_years": min_years if min_years is not None else "",
+        "max_years": max_years if max_years is not None else "",
+        "qs": qs,
     }
     return await render(
         request,
@@ -742,6 +815,9 @@ async def edit_resume(request: Request, id: str, user=Depends(require_login)):
                 "resume_id": doc["resume_id"],   # ← key renamed
                 "name":      doc["name"],
                 "text":      doc["text"],
+                "skills":    ", ".join(doc.get("skills", [])),
+                "location":  doc.get("location", ""),
+                "years":     doc.get("years", ""),
             },
         },
         page_title="Edit résumé")
@@ -750,8 +826,16 @@ async def edit_resume(request: Request, id: str, user=Depends(require_login)):
 async def update_resume_route(
         resume_id: str = Form(...),   # ★ must match the hidden input’s name
         name: str      = Form(...),
-        text: str      = Form(...)):
-    modified = await update_resume(resume_id, name, text)
+        text: str      = Form(...),
+        skills: str    = Form(""),
+        location: str  = Form(""),
+        years: int | None = Form(None)):
+    skill_list = [s.strip() for s in skills.split(',') if s.strip()]
+    loc_val = location or None
+    modified = await update_resume(resume_id, name, text,
+                                   skill_list if skills else None,
+                                   loc_val,
+                                   years)
     if not modified:
         logger.warning("Nothing updated for resume_id %s", resume_id)
     return RedirectResponse("/resumes", status_code=303)
