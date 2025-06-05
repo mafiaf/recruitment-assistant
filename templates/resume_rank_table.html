@@ -3,9 +3,11 @@
     <tr>
       <th class="border px-2 py-1 text-left">Candidate</th>
       <th class="border px-2 py-1 text-center">Fit&nbsp;%</th>
+
       <th class="border px-2 py-1 text-center">
         {% if expected_years %}Yrs/{{ expected_years }}{% else %}Yrs{% endif %}
       </th>
+
       <th class="border px-2 py-1 text-left">Why Fit?</th>
       <th class="border px-2 py-1 text-left">Improve</th>
     </tr>
@@ -16,6 +18,7 @@
       <td class="border px-2 py-1 font-medium">{{ row.name }}</td>
       <td class="border px-2 py-1 text-center">{{ row.fit }}</td>
       <td class="border px-2 py-1 text-center">{{ row.years }}</td>
+
       <td class="border px-2 py-1">{{ row.why }}</td>
       <td class="border px-2 py-1">{{ row.improve }}</td>
     </tr>
