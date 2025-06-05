@@ -11,7 +11,7 @@ mods = {
     'docx': {'Document': lambda *a, **k: None},
     'dotenv': {'load_dotenv': lambda: None},
     'certifi': {'where': lambda: ''},
-    # itsdangerous with a minimal signer that never fails
+    # itsdangerous minimal signer
     'itsdangerous': {
         'URLSafeTimedSerializer': lambda *a, **k: types.SimpleNamespace(
             dumps=lambda obj: 'token',
@@ -19,7 +19,7 @@ mods = {
         ),
         'BadSignature': Exception,
     },
-    # jinja2 environment stub good enough for FastAPI templating
+    # jinja2 stub good enough for Starlette / FastAPI
     'jinja2': {
         'Environment': type(
             'Env',
@@ -38,7 +38,7 @@ mods = {
         'pass_context': lambda f: f,
         'contextfunction': lambda f: f,
     },
-    # top-level multipart package plus blank submodule placeholder
+    # top-level multipart plus placeholder submodule
     'multipart': {
         '__version__': '0',
         'multipart': types.ModuleType('multipart.multipart'),
@@ -52,13 +52,12 @@ for name, attrs in mods.items():
             setattr(mod, k, v)
         sys.modules[name] = mod
         if name == 'multipart':
-            # ensure nested module is present
             sys.modules['multipart.multipart'] = attrs['multipart']
 
-# ── enrich multipart with parsers we need for upload tests ────────────────────
-if 'multipart' in sys.modules:
-    from urllib.parse import parse_qs
+# ── enrich multipart with helpers for form/file tests ────────────────────────
+from urllib.parse import parse_qs
 
+if 'multipart' in sys.modules:
     def parse_options_header(value):
         if not value:
             return b'', {}
@@ -123,10 +122,9 @@ if 'multipart' in sys.modules:
     m.QuerystringParser = QuerystringParser
     m.MultiPartParser = MultiPartParser
     m.MultiPartException = MultiPartException
-    # also expose in multipart.multipart
     sys.modules['multipart.multipart'].parse_options_header = parse_options_header
 
-# ── guarantee multipart.multipart exists even if something was missed ─────────
+# fallback multipart multipart
 if 'multipart.multipart' not in sys.modules:
     sub = types.ModuleType('multipart.multipart')
     sub.parse_options_header = lambda *a, **k: (b'', {})
@@ -134,7 +132,7 @@ if 'multipart.multipart' not in sys.modules:
     if 'multipart' in sys.modules:
         sys.modules['multipart'].multipart = sub
 
-# ── minimal httpx client able to post forms and files ─────────────────────────
+# ── minimal httpx with form and file support ──────────────────────────────────
 if 'httpx' not in sys.modules:
     httpx = types.ModuleType('httpx')
 
@@ -151,7 +149,6 @@ if 'httpx' not in sys.modules:
                 query=parts.query.encode(),
             )
             self.headers = {}
-            # generic body handling – will be overwritten by Client.request
             if isinstance(data, bytes):
                 self._content = data
             elif isinstance(data, str):
@@ -197,7 +194,6 @@ if 'httpx' not in sys.modules:
             self.base_url = _URL(kwargs.get('base_url', ''))
 
         def request(self, method, url, **kwargs):
-            # we support dict form data and dict files (filename, bytes, content-type)
             req = Request(method, url)
             data = kwargs.get('data')
             files = kwargs.get('files')
@@ -248,17 +244,17 @@ if 'httpx' not in sys.modules:
     httpx._client = types.SimpleNamespace(
         USE_CLIENT_DEFAULT=object(),
         CookieTypes=object,
-        UseClientDefault=object,
-        TimeoutTypes=object,
+        UseClientDefault=object(),
+        TimeoutTypes=object(),
     )
     httpx._types = types.SimpleNamespace(
-        URLTypes=object,
-        HeaderTypes=object,
-        QueryParamTypes=object,
-        CookieTypes=object,
-        RequestContent=object,
-        RequestFiles=object,
-        AuthTypes=object,
+        URLTypes=object(),
+        HeaderTypes=object(),
+        QueryParamTypes=object(),
+        CookieTypes=object(),
+        RequestContent=object(),
+        RequestFiles=object(),
+        AuthTypes=object(),
     )
     sys.modules['httpx'] = httpx
 
@@ -284,10 +280,9 @@ if 'starlette.templating' not in sys.modules:
     fastapi_templating.Jinja2Templates = DummyTemplates
     sys.modules['fastapi.templating'] = fastapi_templating
 
-# ── replace python-multipart parser with query-string fallback ────────────────
+# ── Starlette form parser fallback ────────────────────────────────────────────
 import starlette.formparsers as fp
 from starlette.datastructures import FormData
-
 
 class SimpleFormParser:
     def __init__(self, headers, stream):
@@ -304,10 +299,9 @@ class SimpleFormParser:
         }
         return FormData(data)
 
-
 fp.FormParser = SimpleFormParser
 
-# ── passlib minimal stubs ─────────────────────────────────────────────────────
+# ── passlib stubs ─────────────────────────────────────────────────────────────
 passlib_context = types.ModuleType('passlib.context')
 passlib_context.CryptContext = lambda **kw: types.SimpleNamespace(
     hash=lambda p: p,
@@ -322,7 +316,7 @@ passlib_hash.bcrypt = types.SimpleNamespace(
 )
 sys.modules['passlib.hash'] = passlib_hash
 
-# ── Mongo, bson and helper modules ────────────────────────────────────────────
+# ── Mongo, bson plus helpers ──────────────────────────────────────────────────
 pymongo = types.ModuleType('pymongo')
 pymongo.MongoClient = lambda *a, **k: None
 pymongo.errors = types.SimpleNamespace(PyMongoError=Exception)
@@ -332,7 +326,7 @@ bson = types.ModuleType('bson')
 bson.ObjectId = str
 sys.modules['bson'] = bson
 
-# standalone db stub
+# ── db stub -------------------------------------------------------------------
 stub_db = types.ModuleType('db')
 stub_db.chat_find_one = lambda *a, **kw: None
 stub_db.chat_upsert = lambda *a, **kw: None
@@ -342,7 +336,7 @@ stub_db.resumes_collection = None
 stub_db.add_project_history = lambda *a, **kw: None
 sys.modules['db'] = stub_db
 
-# unified mongo_utils stub
+# ── mongo_utils merged stub ---------------------------------------------------
 stub_mongo_utils = types.ModuleType('mongo_utils')
 stub_mongo_utils.update_resume = lambda *a, **kw: None
 stub_mongo_utils.delete_resume_by_id = lambda *a, **kw: None
@@ -353,24 +347,31 @@ stub_mongo_utils.resumes_by_ids = lambda ids: []
 stub_mongo_utils.resumes_collection = None
 stub_mongo_utils.add_project_history = lambda *a, **kw: None
 
-
 class DummyColl:
     def __getattr__(self, name):
         return lambda *a, **k: None
-
 
 class DummyDB(dict):
     def __getitem__(self, key):
         return DummyColl()
 
-
 stub_mongo_utils.db = DummyDB()
-stub_mongo_utils._users = {}
+
+class _Users:
+    def create_index(self, *a, **kw): pass
+    def count_documents(self, *a, **kw): return 0
+    def insert_one(self, *a, **kw): pass
+    def find_one(self, *a, **kw): return None
+    def delete_one(self, *a, **kw): return types.SimpleNamespace(deleted_count=0)
+    def update_one(self, *a, **kw): return types.SimpleNamespace(modified_count=0)
+    def find(self, *a, **kw): return []
+
+stub_mongo_utils._users = _Users()
 stub_mongo_utils.ENV = 'test'
 stub_mongo_utils._guard = lambda op: False
 sys.modules['mongo_utils'] = stub_mongo_utils
 
-# minimal FastAPI templating fallback
+# ── FastAPI templating fallback (if needed) ───────────────────────────────────
 if 'fastapi.templating' not in sys.modules:
     templating = types.ModuleType('fastapi.templating')
 
@@ -384,7 +385,7 @@ if 'fastapi.templating' not in sys.modules:
     templating.Jinja2Templates = Jinja2Templates
     sys.modules['fastapi.templating'] = templating
 
-# FastAPI TestClient stub
+# ── FastAPI TestClient stub ───────────────────────────────────────────────────
 if 'fastapi.testclient' not in sys.modules:
     testclient = types.ModuleType('fastapi.testclient')
 
@@ -421,7 +422,7 @@ if 'fastapi.testclient' not in sys.modules:
     testclient.TestClient = TestClient
     sys.modules['fastapi.testclient'] = testclient
 
-# pinecone utils stub
+# ── pinecone utils stub ───────────────────────────────────────────────────────
 stub_pinecone_utils = types.ModuleType('pinecone_utils')
 stub_pinecone_utils.add_resume_to_pinecone = lambda *a, **kw: None
 stub_pinecone_utils.embed_text = lambda *a, **kw: []
@@ -429,7 +430,7 @@ stub_pinecone_utils.index = None
 stub_pinecone_utils.search_best_resumes = lambda *a, **kw: []
 sys.modules['pinecone_utils'] = stub_pinecone_utils
 
-# ── finally load the real main.py so test modules can import it ───────────────
+# ── finally load the real main.py so tests can import it ──────────────────────
 import importlib.util
 import pathlib
 

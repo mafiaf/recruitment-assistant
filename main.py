@@ -719,14 +719,19 @@ def list_resumes(request: Request, user=Depends(require_login)):
         docs = []
 
     # normalise for the template
-    resumes_for_tpl = [
-        {
-            "id":   d.get("resume_id", "—"),
-            "name": d.get("name",       "Unknown"),
-            "text": (d.get("text") or "")[:400] + "…",
-        }
-        for d in docs
-    ]
+    resumes_for_tpl = []
+    for d in docs:
+        oid = d.get("_id")
+        added = "—"
+        if hasattr(oid, "generation_time"):
+            added = oid.generation_time.strftime("%Y-%m-%d")
+
+        resumes_for_tpl.append({
+            "id":    d.get("resume_id", "—"),
+            "name":  d.get("name",       "Unknown"),
+            "text":  (d.get("text") or "")[:400] + "…",
+            "added": added,
+        })
 
     return render(request, "resumes.html",
                   {"resumes": resumes_for_tpl},
@@ -772,7 +777,8 @@ async def view_resumes(request: Request, user=Depends(require_login)):
             resumes.append({
                 "id": match.id,
                 "name": match.metadata.get("name", "Unknown"),
-                "text": match.metadata.get("text", "No description available.")
+                "text": match.metadata.get("text", "No description available."),
+                "added": match.metadata.get("added", "—"),
             })
 
         return render(request, "resumes.html",
