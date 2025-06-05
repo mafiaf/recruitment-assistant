@@ -418,28 +418,27 @@ def slugify(val: str) -> str:
 @app.post("/upload_resume", response_class=HTMLResponse)
 async def upload_resume(
     request: Request,
+    file: UploadFile | None = File(None),
+    name: str | None = Form(None),
+    text: str | None = Form(None),
     resume: ResumeUpload | None = Body(None),
     user=Depends(require_login),
 ):
     """Handle résumé uploads from JSON or multipart forms."""
-    name = ""
-    text = ""
     filename = ""
 
     # ── JSON payload -------------------------------------------------------
     if resume is not None:
-        name = resume.name or ""
-        text = resume.text or ""
+        name = resume.name or name or ""
+        text = resume.text or text or ""
     else:
         # ── multipart/form-data -------------------------------------------
-        form = await request.form()
-        upload = form.get("files")
-        name = (form.get("name") or "").strip()
-        text = (form.get("text") or "").strip()
-        if upload and getattr(upload, "filename", None):
-            filename = upload.filename
-            data = await upload.read()
+        if file is not None:
+            filename = file.filename
+            data = await file.read()
             text = extract_text(data, filename)
+        name = (name or "").strip()
+        text = (text or "").strip()
 
     if not text.strip():
         return render(
