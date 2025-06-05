@@ -7,17 +7,17 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap">
   <link rel="stylesheet" href="/static/styles.css">
 </head>
-<body class="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 flex flex-col font-sans">
-  <header class="px-6 py-4 bg-gradient-to-r from-blue-900 to-blue-700 text-white shadow flex justify-between items-center">
-    <h1 class="font-semibold text-xl">Edit résumé</h1>
+<body class="font-sans text-gray-800">
+  <header class="px-6 py-4 bg-white/80 backdrop-blur-md shadow-md flex justify-between items-center">
+    <h1 class="font-semibold text-xl text-indigo-600">Edit résumé</h1>
     <nav class="space-x-6 text-sm">
-      <a href="/" class="text-blue-200 hover:text-white">Home</a>
-      <a href="/resumes" class="text-blue-200 hover:text-white">All résumés</a>
-      <a href="/chat" class="text-blue-200 hover:text-white">Chat</a>
+      <a href="/" class="text-gray-700 hover:text-indigo-600">Home</a>
+      <a href="/resumes" class="text-gray-700 hover:text-indigo-600">All résumés</a>
+      <a href="/chat" class="text-gray-700 hover:text-indigo-600">Chat</a>
     </nav>
   </header>
 
-  <main class="flex-1 p-6 m-6 bg-white/70 backdrop-blur rounded-xl shadow">
+  <main class="flex-1 p-6 m-6 card">
     <form action="/update_resume" method="post" class="max-w-4xl space-y-6">
       <input type="hidden" name="resume_id" value="{{ resume.resume_id }}">
       
@@ -25,7 +25,7 @@
         <label class="block font-medium mb-1">Name</label>
         <input name="name"
                value="{{ resume.name }}"
-               class="w-full border rounded px-3 py-2"
+               class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                required>
       </div>
 
@@ -33,11 +33,11 @@
         <label class="block font-medium mb-1">Text</label>
         <textarea name="text"
                   rows="18"
-                  class="w-full border rounded px-3 py-2 font-mono"
+                  class="w-full border rounded px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   required>{{ resume.text }}</textarea>
       </div>
 
-      <button class="px-6 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">
+      <button class="px-6 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">
         Save changes
       </button>
     </form>
