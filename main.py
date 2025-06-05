@@ -42,6 +42,7 @@ from mongo_utils import (
     resumes_collection,
     add_project_history,
     delete_project,
+    ensure_indexes,
 )
 from pymongo import errors
 from pinecone_utils import (
@@ -53,13 +54,7 @@ from pinecone_utils import (
 from utils import sanitize_markdown
 from schemas import ResumeUpload, ChatRequest
 
-if ENV == "production":
-    _users.create_index("username", unique=True)
-else:
-    try:
-        _users.create_index("username", unique=True)
-    except errors.PyMongoError:
-        pass
+
 
 openai.api_key = settings.OPENAI_API_KEY
 
@@ -86,7 +81,7 @@ users_coll = db["users"]
 DEFAULT_PASSWORD = settings.DEFAULT_PASS
 
 # ── helpers ────────────────────────────────────────────────────────────────
-def render(request: Request,
+async def render(request: Request,
            template_name: str,
            ctx: dict | None = None,
            page_title: str | None = None,
@@ -104,15 +99,15 @@ def render(request: Request,
     ctx.setdefault("request", request)
     ctx.setdefault("active",  active or request.url.path)
     ctx.setdefault("page_title", page_title or "")
-    ctx.setdefault("user", get_current_user(request.cookies.get(COOKIE_NAME)))
+    ctx.setdefault("user", await get_current_user(request.cookies.get(COOKIE_NAME)))
     return templates.TemplateResponse(template_name, ctx,
                                       status_code=status_code)
 
-def get_user(username: str):
-    return users_coll.find_one({"username": username})
+async def get_user(username: str):
+    return await users_coll.find_one({"username": username})
 
-def create_user(username: str, password: str, role: str = "user"):
-    users_coll.insert_one(
+async def create_user(username: str, password: str, role: str = "user"):
+    await users_coll.insert_one(
         {
             "username": username,
             "hashed_password": pwd_context.hash(password),
@@ -121,8 +116,8 @@ def create_user(username: str, password: str, role: str = "user"):
         }
     )
 
-def verify_password(username: str, password: str):
-    user = get_user(username)
+async def verify_password(username: str, password: str):
+    user = await get_user(username)
     if user and pwd_context.verify(password, user["hashed_password"]):
         return user
     return None
@@ -146,39 +141,40 @@ def set_session(resp, user: dict):
 def clear_session(resp):
     resp.delete_cookie(COOKIE_NAME)
 
-def get_current_user(session: str = Cookie(None)):
+async def get_current_user(session: str = Cookie(None)):
     if not session:
         return None
     try:
         data = signer.loads(session, max_age=8 * 3600)
-        return get_user(data["u"])
+        return await get_user(data["u"])
     except BadSignature:
         return None
 
-def require_login(user=Depends(get_current_user)):
+async def require_login(user=Depends(get_current_user)):
     if not user:
         raise HTTPException(
             status_code=status.HTTP_302_FOUND, headers={"Location": "/login"}
         )
     return user
 
-def require_owner(user=Depends(require_login)):
+async def require_owner(user=Depends(require_login)):
     if user["role"] != "owner":
         raise HTTPException(status_code=403, detail="Owners only")
     return user
 
 @app.on_event("startup")
-def seed_owner() -> None:
-    # if Mongo is unreachable in dev just skip the seeding step
-    if _guard("seed_owner"):
+async def seed_owner() -> None:
+    if await _guard("seed_owner"):
         print("⚠️  Mongo not reachable – owner account not seeded")
         return
 
-    if users_coll.count_documents({"role": "owner"}) == 0:
-        create_user(
+    await ensure_indexes()
+
+    if await users_coll.count_documents({"role": "owner"}) == 0:
+        await create_user(
             settings.OWNER_USER,
             settings.OWNER_PASS,
-            role="owner"
+            role="owner",
         )
         print("🟢 Created initial owner account")
 
@@ -216,10 +212,10 @@ def extract_text(data: bytes, filename: str) -> str:
 # ═════════════════════════════════════════════════════════════════════════════
 
 @app.get("/", response_class=HTMLResponse)
-def home(request: Request, user=Depends(require_login)):
+async def home(request: Request, user=Depends(require_login)):
     # Fetch recent resumes for the front page (best effort – works without DB)
     try:
-        docs = resumes_all()
+        docs = await resumes_all()
     except Exception as e:  # pragma: no cover - DB might be down
         print("⚠️  resumes_all() failed:", e)
         docs = []
@@ -242,20 +238,20 @@ def home(request: Request, user=Depends(require_login)):
             "added": added,
         })
 
-    return render(request, "index.html", {"resumes": resumes}, page_title="Home")
+    return await render(request, "index.html", {"resumes": resumes}, page_title="Home")
 
 
 @app.get("/chat", response_class=HTMLResponse)
-def chat_interface(request: Request, user=Depends(require_login)):
+async def chat_interface(request: Request, user=Depends(require_login)):
     # sidebar list (may be empty if Mongo down)
     candidates = [
         {"id": r["resume_id"], "name": r["name"]}
-        for r in resumes_all()
+        for r in await resumes_all()
     ]
 
-    session_user = get_current_user(request.cookies.get(COOKIE_NAME))
+    session_user = await get_current_user(request.cookies.get(COOKIE_NAME))
     user_id = session_user["username"] if session_user else "anon"
-    doc      = chat_find_one({"user_id": user_id}) or {}
+    doc      = await chat_find_one({"user_id": user_id}) or {}
     history  = doc.get("messages", [])
 
     if not isinstance(history, list):    # ⬅️ guard against bad data
@@ -268,7 +264,7 @@ def chat_interface(request: Request, user=Depends(require_login)):
         for m in history if isinstance(m, dict)
     ]
 
-    return render(
+    return await render(
         request,
         "chat.html",
         {"history": safe_history, "candidates": candidates},
@@ -285,11 +281,11 @@ async def chat(request: Request,
                user=Depends(require_login)):
     user_text    = chat_data.text.strip()
     selected_ids = chat_data.candidate_ids        # list[str]
-    session_user = get_current_user(request.cookies.get(COOKIE_NAME))
+    session_user = await get_current_user(request.cookies.get(COOKIE_NAME))
     user_id      = session_user["username"] if session_user else "anon"
 
     # 1️⃣ fetch previous convo & project context
-    doc        = chat_find_one({"user_id": user_id}) or {}
+    doc        = await chat_find_one({"user_id": user_id}) or {}
     history    = doc.get("messages", [])
     last_proj  = doc.get("last_project", {})               # may be {}
 
@@ -350,7 +346,7 @@ async def chat(request: Request,
             {"role": "assistant", "content": assistant_reply},
         ]
     )
-    chat_upsert(user_id, {"messages": history})
+    await chat_upsert(user_id, {"messages": history})
 
     return {"reply": safe_reply}
 
@@ -366,7 +362,7 @@ async def chat_action(
     action: str = Form(...),
     candidate_ids: List[str] = Form([]),
 ):
-    session_user = get_current_user(request.cookies.get(COOKIE_NAME))
+    session_user = await get_current_user(request.cookies.get(COOKIE_NAME))
     user_id = session_user["username"] if session_user else "anon"
     if action == "top5":
         user_instr = "Pick the top 5 candidates and explain briefly why."
@@ -377,7 +373,7 @@ async def chat_action(
 
     # candidate set
     if candidate_ids:
-        matches = resumes_by_ids(candidate_ids)
+        matches = await resumes_by_ids(candidate_ids)
     else:
         matches = search_best_resumes("(the project text…)", top_k=10, namespace="resumes")[:5]
 
@@ -398,8 +394,8 @@ async def chat_action(
     ).choices[0].message.content
     safe_reply = sanitize_markdown(reply)
 
-    candidates = [{"id": r["resume_id"], "name": r["name"]} for r in resumes_all()]
-    return render(
+    candidates = [{"id": r["resume_id"], "name": r["name"]} for r in await resumes_all()]
+    return await render(
         request,
         "chat.html",
         {"reply": safe_reply, "candidates": candidates},
@@ -458,7 +454,7 @@ async def upload_resume(
         text = (resume.text or text or "").strip()
 
         if not text:
-            return render(
+            return await render(
                 request,
                 "index.html",
                 {"popup": "Résumé text is empty."},
@@ -469,7 +465,7 @@ async def upload_resume(
         resume_id = slugify(display_name)
         add_resume_to_pinecone(text, resume_id, {"name": display_name, "text": text}, "resumes")
         try:
-            resumes_collection.insert_one({"resume_id": resume_id, "name": display_name, "text": text})
+            await resumes_collection.insert_one({"resume_id": resume_id, "name": display_name, "text": text})
         except Exception as e:  # pragma: no cover
             print("🛑 Mongo insert failed:", e)
         added_names.append(display_name)
@@ -488,7 +484,7 @@ async def upload_resume(
             resume_id = slugify(display_name)
             add_resume_to_pinecone(text, resume_id, {"name": display_name, "text": text}, "resumes")
             try:
-                resumes_collection.insert_one({"resume_id": resume_id, "name": display_name, "text": text})
+                await resumes_collection.insert_one({"resume_id": resume_id, "name": display_name, "text": text})
             except Exception as e:  # pragma: no cover
                 print("🛑 Mongo insert failed:", e)
             added_names.append(display_name)
@@ -503,13 +499,13 @@ async def upload_resume(
             resume_id = slugify(display_name)
             add_resume_to_pinecone(file_text, resume_id, {"name": display_name, "text": file_text}, "resumes")
             try:
-                resumes_collection.insert_one({"resume_id": resume_id, "name": display_name, "text": file_text})
+                await resumes_collection.insert_one({"resume_id": resume_id, "name": display_name, "text": file_text})
             except Exception as e:  # pragma: no cover
                 print("🛑 Mongo insert failed:", e)
             added_names.append(display_name)
 
     if not added_names:
-        return render(
+        return await render(
             request,
             "index.html",
             {"popup": "No valid résumé uploaded."},
@@ -517,7 +513,7 @@ async def upload_resume(
         )
 
     msg = "Résumés added: " + ", ".join(added_names) if len(added_names) > 1 else f"Résumé added: {added_names[0]}"
-    return render(request, "index.html", {"popup": msg}, page_title="Home")
+    return await render(request, "index.html", {"popup": msg}, page_title="Home")
 
 
 # ---------------------------------------------------------------------------
@@ -557,7 +553,7 @@ async def match_project(
     file: UploadFile = File(None),
     candidate_ids: Optional[List[str]] = Form(None),
 ):
-    session_user = get_current_user(request.cookies.get(COOKIE_NAME))
+    session_user = await get_current_user(request.cookies.get(COOKIE_NAME))
     user_id = session_user["username"] if session_user else "anon"
     # 1️⃣ extract text --------------------------------------------------------
     if file and file.filename:
@@ -738,12 +734,12 @@ async def match_project(
     return HTMLResponse(content=html_fragment)
 
 @app.get("/resumes", response_class=HTMLResponse)
-def list_resumes(request: Request, user=Depends(require_login)):
+async def list_resumes(request: Request, user=Depends(require_login)):
     """
     Returns an overview of all résumés. Works even when MongoDB is offline.
     """
     try:
-        docs = resumes_all()          # <- new helper (returns [] if DB down)
+        docs = await resumes_all()          # <- new helper (returns [] if DB down)
     except Exception as e:            # pragma: no cover
         print("⚠️  resumes_all() failed:", e)
         docs = []
@@ -763,19 +759,19 @@ def list_resumes(request: Request, user=Depends(require_login)):
             "added": added,
         })
 
-    return render(request, "resumes.html",
+    return await render(request, "resumes.html",
                   {"resumes": resumes_for_tpl},
                   page_title="Résumés", active="/resumes")
 
 
 @app.get("/projects", response_class=HTMLResponse)
-def project_history(request: Request, user=Depends(require_login)):
-    session_user = get_current_user(request.cookies.get(COOKIE_NAME))
+async def project_history(request: Request, user=Depends(require_login)):
+    session_user = await get_current_user(request.cookies.get(COOKIE_NAME))
     user_id = session_user["username"] if session_user else "anon"
-    doc = chat_find_one({"user_id": user_id}) or {}
+    doc = await chat_find_one({"user_id": user_id}) or {}
     projects = doc.get("projects", [])
     projects = sorted(projects, key=lambda p: p.get("ts", 0), reverse=True)
-    return render(
+    return await render(
         request,
         "projects.html",
         {"projects": projects},
@@ -785,12 +781,12 @@ def project_history(request: Request, user=Depends(require_login)):
 
 
 @app.post("/delete_project")
-def delete_project_route(request: Request,
+async def delete_project_route(request: Request,
                          ts: str = Form(...),
                          user=Depends(require_login)):
-    session_user = get_current_user(request.cookies.get(COOKIE_NAME))
+    session_user = await get_current_user(request.cookies.get(COOKIE_NAME))
     user_id = session_user["username"] if session_user else "anon"
-    deleted = delete_project(user_id, ts)
+    deleted = await delete_project(user_id, ts)
     if deleted == 0:
         print(f"🛑 No project found with ts {ts}")
     else:
@@ -825,36 +821,36 @@ async def view_resumes(request: Request, user=Depends(require_login)):
                 "added": match.metadata.get("added", "—"),
             })
 
-        return render(request, "resumes.html",
+        return await render(request, "resumes.html",
                       {"resumes": resumes},
                         page_title="Résumés", active="/resumes")
 
     except Exception as e:
         print("🛑 Pinecone query failed:", e)
-        return render(request, "resumes.html",
+        return await render(request, "resumes.html",
                       {"resumes": resumes},
                         page_title="Résumés", active="/resumes")
 
 
 @app.get("/edit_resume", response_class=HTMLResponse)
-def edit_resume(request: Request, id: str, user=Depends(require_login)):
+async def edit_resume(request: Request, id: str, user=Depends(require_login)):
     """
     Fetch the résumé by either resume_id or Mongo _id.
     """
     doc = None
     try:
         # 1) try resume_id
-        doc = resumes_collection.find_one({"resume_id": id})
+        doc = await resumes_collection.find_one({"resume_id": id})
         # 2) fall back to _id if the first lookup failed
         if not doc and ObjectId.is_valid(id):
-            doc = resumes_collection.find_one({"_id": ObjectId(id)})
+            doc = await resumes_collection.find_one({"_id": ObjectId(id)})
     except Exception as e:
         print("🛑 Mongo lookup failed:", e)
 
     if not doc:                        # still nothing → 404
         return PlainTextResponse("Résumé not found", status_code=404)
 
-    return render(request, "edit_resume.html",
+    return await render(request, "edit_resume.html",
         {
             "request": request,
             "resume": {
@@ -866,11 +862,11 @@ def edit_resume(request: Request, id: str, user=Depends(require_login)):
         page_title="Edit résumé")
 
 @app.post("/update_resume")
-def update_resume_route(
+async def update_resume_route(
         resume_id: str = Form(...),   # ★ must match the hidden input’s name
         name: str      = Form(...),
         text: str      = Form(...)):
-    modified = update_resume(resume_id, name, text)
+    modified = await update_resume(resume_id, name, text)
     if not modified:
         print(f"🛑 Nothing updated for resume_id {resume_id!r}")
     return RedirectResponse("/resumes", status_code=303)
@@ -880,7 +876,7 @@ async def delete_resume_route(id: str = Form(...)):
     print(f"🟢 Deleting resume with ID: {id}")
 
     # 1. Delete from MongoDB
-    deleted_count = delete_resume_by_id(id)
+    deleted_count = await delete_resume_by_id(id)
     if deleted_count > 0:
         print(f"✅ Deleted {deleted_count} doc(s) from MongoDB.")
     else:
@@ -900,10 +896,10 @@ async def delete_resume_route(id: str = Form(...)):
 async def chat_followup(request: Request, user=Depends(require_login)):
     payload        = await request.json()
     user_text      = payload.get("message", "").strip()
-    session_user = get_current_user(request.cookies.get(COOKIE_NAME))
+    session_user = await get_current_user(request.cookies.get(COOKIE_NAME))
     user_id        = session_user["username"] if session_user else "anon"
 
-    doc = chats.find_one({"user_id": user_id}) or {}
+    doc = await chats.find_one({"user_id": user_id}) or {}
     history  = doc.get("messages", [])
     project  = doc.get("last_project")
 
@@ -919,7 +915,7 @@ async def chat_followup(request: Request, user=Depends(require_login)):
             messages=messages
         ).choices[0].message.content
         history.append({"role":"assistant","content":reply})
-        chats.update_one({"user_id":user_id},{"$set":{"messages":history}},upsert=True)
+        await chats.update_one({"user_id":user_id},{"$set":{"messages":history}},upsert=True)
         return {"reply": reply}
 
     # ── 2. build alias map & snippets ──────────────────────────────────────
@@ -964,7 +960,7 @@ async def chat_followup(request: Request, user=Depends(require_login)):
 
     # ── 5. persist & return ────────────────────────────────────────────────
     history.append({"role":"assistant","content":assistant_reply})
-    chats.update_one(
+    await chats.update_one(
         {"user_id":user_id},
         {"$set":{"messages":history}},
         upsert=True
@@ -976,16 +972,16 @@ async def chat_followup(request: Request, user=Depends(require_login)):
 
 
 @app.get("/login", response_class=HTMLResponse)
-def login_form(request: Request):
-       return render(request, "login.html", page_title="Login", active="/login")
+async def login_form(request: Request):
+       return await render(request, "login.html", page_title="Login", active="/login")
 
 @app.post("/login")
 async def login_post(request: Request,
                      username: str = Form(...),
                      password: str = Form(...)):
-    user = verify_password(username, password)
+    user = await verify_password(username, password)
     if not user:
-        return render(request, "login.html",
+        return await render(request, "login.html",
                       {"error": "Invalid credentials"},
                       page_title="Login", active="/login",
                       status_code=401)
@@ -1002,25 +998,26 @@ def logout():
 
 
 @app.get("/admin/users", response_class=HTMLResponse, dependencies=[Depends(require_owner)])
-def user_admin(request: Request):
-    users = list(users_coll.find({}, {"_id": 0, "hashed_password": 0}))   # hide pwd hash
-    return render(request, "admin_users.html",
+async def user_admin(request: Request):
+    cursor = users_coll.find({}, {"_id": 0, "hashed_password": 0})
+    users = await cursor.to_list(None)
+    return await render(request, "admin_users.html",
                   {"users": users},
                   page_title="User admin", active="/admin/users")
 
 @app.post("/admin/users", dependencies=[Depends(require_owner)])
-def create_user_admin(
+async def create_user_admin(
     username: str = Form(...),
     password: str = Form(...),
     role: str = Form("user"),
 ):
-    if users_coll.find_one({"username": username}):
+    if await users_coll.find_one({"username": username}):
         raise HTTPException(400, "User already exists")
-    create_user(username, password, role)
+    await create_user(username, password, role)
     return RedirectResponse("/admin/users", status_code=303)
 
 @app.post("/admin/users/delete", dependencies=[Depends(require_owner)])
-def delete_user_admin(
+async def delete_user_admin(
         username: str = Form(...),
         current   = Depends(require_owner)):             # you are the owner
     """
@@ -1030,7 +1027,7 @@ def delete_user_admin(
     if username == current["username"]:
         raise HTTPException(400, "You cannot delete your own owner account")
 
-    res = users_coll.delete_one({"username": username})
+    res = await users_coll.delete_one({"username": username})
     if res.deleted_count == 0:
         raise HTTPException(404, "User not found")
 
@@ -1039,29 +1036,29 @@ def delete_user_admin(
 
 @app.get("/admin/users/{username}/edit", response_class=HTMLResponse,
          dependencies=[Depends(require_owner)])
-def edit_user_form(request: Request, username: str):
-    user = users_coll.find_one({"username": username}, {"_id": 0, "hashed_password": 0})
+async def edit_user_form(request: Request, username: str):
+    user = await users_coll.find_one({"username": username}, {"_id": 0, "hashed_password": 0})
     if not user:
         raise HTTPException(404, "User not found")
-    return render(request, "edit_user.html",
+    return await render(request, "edit_user.html",
                   {"user": user},
                   page_title="Edit user", active="/admin/users")
 
 
 @app.post("/admin/users/{username}/edit", dependencies=[Depends(require_owner)])
-def update_user_admin(username: str, new_username: str = Form(...)):
+async def update_user_admin(username: str, new_username: str = Form(...)):
     if username != new_username:
-        if users_coll.find_one({"username": new_username}):
+        if await users_coll.find_one({"username": new_username}):
             raise HTTPException(400, "Username already exists")
-        res = users_coll.update_one({"username": username}, {"$set": {"username": new_username}})
+        res = await users_coll.update_one({"username": username}, {"$set": {"username": new_username}})
         if res.matched_count == 0:
             raise HTTPException(404, "User not found")
     return RedirectResponse("/admin/users", status_code=303)
 
 
 @app.post("/admin/users/{username}/reset", dependencies=[Depends(require_owner)])
-def reset_user_password(username: str):
-    res = users_coll.update_one(
+async def reset_user_password(username: str):
+    res = await users_coll.update_one(
         {"username": username},
         {"$set": {"hashed_password": pwd_context.hash(DEFAULT_PASSWORD)}}
     )
@@ -1071,21 +1068,21 @@ def reset_user_password(username: str):
 
 
 @app.get("/profile", response_class=HTMLResponse, dependencies=[Depends(require_login)])
-def profile(request: Request, user = Depends(get_current_user)):
-    return render(request, "profile.html",
+async def profile(request: Request, user = Depends(get_current_user)):
+    return await render(request, "profile.html",
                   {"user": user},
                   page_title="Profile", active="/profile")
 
 # change password
 @app.post("/profile/password", dependencies=[Depends(require_login)])
-def change_password(
+async def change_password(
         old: str = Form(...),
         new: str = Form(...),
         user = Depends(get_current_user)
     ):
-    if not verify_password(user["username"], old):
+    if not await verify_password(user["username"], old):
         raise HTTPException(400, "Old password incorrect")
-    users_coll.update_one(
+    await users_coll.update_one(
         {"username": user["username"]},
         {"$set": {"hashed_password": pwd_context.hash(new)}}
     )

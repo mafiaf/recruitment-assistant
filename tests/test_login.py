@@ -14,7 +14,7 @@ def make_request(monkeypatch):
     """Provide a fresh Request plus all required stubs for each test."""
 
     # fake template renderer so login_form works without Jinja2
-    def fake_render(
+    async def fake_render(
         request,
         template_name,
         ctx=None,
@@ -25,7 +25,7 @@ def make_request(monkeypatch):
         return HTMLResponse("OK", status_code=status_code)
 
     # fake password check
-    def fake_verify(username: str, password: str):
+    async def fake_verify(username: str, password: str):
         if username == "user" and password == "pass":
             return {"username": username, "role": "user"}
         return None
@@ -40,8 +40,9 @@ def make_request(monkeypatch):
     return lambda: Request({"type": "http", "headers": []})
 
 
-def test_login_page(make_request):
-    resp = main.login_form(make_request())
+@pytest.mark.asyncio
+async def test_login_page(make_request):
+    resp = await main.login_form(make_request())
     assert resp.status_code == 200
 
 
