@@ -415,44 +415,77 @@ async def upload_resume(
     user          = Depends(require_login),
     name: str     = Form(""),
     text: str     = Form(""),
-    file: UploadFile = File(None),
+    files: List[UploadFile] = File(None),
 ):
-    if file and file.filename:
-        data = await file.read()
-        text = extract_text(data, file.filename)
-        if not text:
-            return render(request, "index.html",
-                          {"popup": "Unsupported file type."},
-                          page_title="Home")
+    names = []
+    if files:
+        for f in files:
+            if not f or not f.filename:
+                continue
+            data = await f.read()
+            txt = extract_text(data, f.filename)
+            if not txt:
+                return render(
+                    request,
+                    "index.html",
+                    {"popup": "Unsupported file type."},
+                    page_title="Home",
+                )
+            if not txt.strip():
+                return render(
+                    request,
+                    "index.html",
+                    {"popup": "Résumé text is empty."},
+                    page_title="Home",
+                )
+
+            display_name = guess_name(name, f.filename, txt)
+            resume_id = slugify(display_name)
+            add_resume_to_pinecone(
+                txt,
+                resume_id,
+                {"name": display_name, "text": txt},
+                "resumes",
+            )
+            try:
+                resumes_collection.insert_one(
+                    {"resume_id": resume_id, "name": display_name, "text": txt}
+                )
+            except Exception as e:  # pragma: no cover
+                print("🛑 Mongo insert failed:", e)
+            names.append(display_name)
+        popup = f"{len(names)} résumé(s) added: {', '.join(names)}"
+        return render(request, "index.html", {"popup": popup}, page_title="Home")
 
     if not text.strip():
-        return render(request, "index.html",
-                      {"popup": "Résumé text is empty."},
-                      page_title="Home")
+        return render(
+            request,
+            "index.html",
+            {"popup": "Résumé text is empty."},
+            page_title="Home",
+        )
 
-    # ───── pick a *display* name & a stable ID ────────────────────────────
-    display_name = guess_name(name, file.filename if file else "", text)
-    resume_id    = slugify(display_name)     # or uuid if slug empty
-
-    # push to Pinecone
+    display_name = guess_name(name, "", text)
+    resume_id = slugify(display_name)
     add_resume_to_pinecone(
         text,
-        resume_id,                    # vector ID
-        {"name": display_name, "text": text},   # metadata
+        resume_id,
+        {"name": display_name, "text": text},
         "resumes",
     )
-
-    # push to Mongo
     try:
         resumes_collection.insert_one(
             {"resume_id": resume_id, "name": display_name, "text": text}
         )
-    except Exception as e:            # pragma: no cover
+    except Exception as e:  # pragma: no cover
         print("🛑 Mongo insert failed:", e)
 
-    return render(request, "index.html",
-                  {"popup": f"Résumé added: {display_name}"},
-                  page_title="Home")
+    return render(
+        request,
+        "index.html",
+        {"popup": f"Résumé added: {display_name}"},
+        page_title="Home",
+    )
 
 
 # ---------------------------------------------------------------------------
