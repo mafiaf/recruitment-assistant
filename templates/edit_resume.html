@@ -1,46 +1,35 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Edit résumé – {{ resume.name }}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap">
-  <link rel="stylesheet" href="/static/styles.css">
-</head>
-<body class="font-sans text-gray-800">
-  <header class="px-6 py-4 bg-white/80 backdrop-blur-md shadow-md flex justify-between items-center">
-    <h1 class="font-semibold text-xl text-indigo-600">Edit résumé</h1>
-    <nav class="space-x-6 text-sm">
-      <a href="/" class="text-gray-700 hover:text-indigo-600">Home</a>
-      <a href="/resumes" class="text-gray-700 hover:text-indigo-600">All résumés</a>
-      <a href="/chat" class="text-gray-700 hover:text-indigo-600">Chat</a>
-    </nav>
-  </header>
+{% extends "_base.html" %}
+{% set page_title = "Edit résumé" %}
+{% set active = "/resumes" %}
 
-  <main class="flex-1 p-6 m-6 card">
-    <form action="/update_resume" method="post" class="max-w-4xl space-y-6">
-      <input type="hidden" name="resume_id" value="{{ resume.resume_id }}">
-      
-      <div>
-        <label class="block font-medium mb-1">Name</label>
-        <input name="name"
-               value="{{ resume.name }}"
-               class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-               required>
-      </div>
+{% block body %}
+<div class="max-w-4xl mx-auto card">
+  <div class="flex items-center mb-6">
+    <a href="/resumes" class="mr-4 text-2xl text-gray-600 hover:text-gray-900">&larr;</a>
+    <h2 class="text-2xl font-semibold text-indigo-600">Edit résumé</h2>
+  </div>
+  <form action="/update_resume" method="post" class="space-y-6">
+    <input type="hidden" name="resume_id" value="{{ resume.resume_id }}">
 
-      <div>
-        <label class="block font-medium mb-1">Text</label>
-        <textarea name="text"
-                  rows="18"
-                  class="w-full border rounded px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  required>{{ resume.text }}</textarea>
-      </div>
+    <div>
+      <label class="block font-medium mb-1">Name</label>
+      <input name="name"
+             value="{{ resume.name }}"
+             class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+             required>
+    </div>
 
-      <button class="px-6 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">
-        Save changes
-      </button>
-    </form>
-  </main>
-</body>
-</html>
+    <div>
+      <label class="block font-medium mb-1">Text</label>
+      <textarea name="text"
+                rows="18"
+                class="w-full border rounded px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                required>{{ resume.text }}</textarea>
+    </div>
+
+    <button class="px-6 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">
+      Save changes
+    </button>
+  </form>
+</div>
+{% endblock %}
