@@ -27,7 +27,13 @@ from datetime import datetime
 
 
 # ── local helper modules ──────────────────────────────────────────────────────
-from db import (
+from mongo_utils import (
+    db,
+    _users,
+    update_resume,
+    delete_resume_by_id,
+    ENV,
+    _guard,
     chat_find_one,
     chat_upsert,
     resumes_all,
@@ -35,8 +41,6 @@ from db import (
     resumes_collection,
     add_project_history,
 )
-
-from mongo_utils import db, _users, update_resume, delete_resume_by_id, ENV, _guard
 from pymongo import errors
 from pinecone_utils import (
     add_resume_to_pinecone,
