@@ -64,6 +64,12 @@ def test_extract_years_requirement():
     assert main.extract_years_requirement("no numbers") is None
 
 
+def test_estimate_years_experience():
+    txt = "Jan 2018 - Mar 2020\nApr 2021 - Present"
+    yrs = main.estimate_years_experience(txt)
+    assert yrs >= 4
+
+
 
 @pytest.mark.asyncio
 async def test_match_project_years_column(monkeypatch):

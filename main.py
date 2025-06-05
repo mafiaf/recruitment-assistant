@@ -289,6 +289,50 @@ def extract_years_requirement(text: str) -> int | None:
             return None
     return None
 
+
+def estimate_years_experience(text: str) -> int | None:
+    """Naively sum durations from date ranges like '2019 - 2021'."""
+    month_map = {
+        "jan": 1, "january": 1, "januari": 1,
+        "feb": 2, "february": 2, "februari": 2,
+        "mar": 3, "march": 3, "maart": 3,
+        "apr": 4, "april": 4,
+        "may": 5, "mei": 5,
+        "jun": 6, "june": 6, "juni": 6,
+        "jul": 7, "july": 7, "juli": 7,
+        "aug": 8, "august": 8, "augustus": 8,
+        "sep": 9, "sept": 9, "september": 9,
+        "oct": 10, "october": 10, "oktober": 10,
+        "nov": 11, "november": 11,
+        "dec": 12, "december": 12,
+    }
+    month_re = "|".join(month_map.keys())
+    pattern = re.compile(
+        rf"(?:(?P<sm>{month_re})\s+)?(?P<sy>\d{{4}})\s*[\-–—]\s*(?:(?P<em>{month_re})\s+)?(?P<ey>\d{{4}}|present|now)",
+        flags=re.I,
+    )
+    total_months = 0
+    current_year = datetime.utcnow().year
+    current_month = datetime.utcnow().month
+    for m in pattern.finditer(text):
+        sy = int(m.group("sy"))
+        sm = month_map.get((m.group("sm") or "").lower(), 1)
+        ey_str = m.group("ey").lower()
+        if ey_str in {"present", "now"}:
+            ey = current_year
+            em = current_month
+        else:
+            ey = int(ey_str)
+            em = month_map.get((m.group("em") or "").lower(), 12)
+        start = datetime(sy, sm, 1)
+        end = datetime(ey, em, 1)
+        months = (end.year - start.year) * 12 + end.month - start.month
+        if months > 0:
+            total_months += months
+    if total_months:
+        return round(total_months / 12)
+    return None
+
 # ── upload validation constants --------------------------------------------
 ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 # default max file size: 5 MB
@@ -334,6 +378,8 @@ async def upload_resume(
         tag_list = parse_tags(resume.tags)
         loc_val = resume.location or location or ""
         years_val = resume.years if resume.years is not None else years
+        if years_val is None:
+            years_val = estimate_years_experience(text)
 
         if not text:
             return await render(
@@ -386,6 +432,8 @@ async def upload_resume(
         if not files and text:
             # fallback: text field without file
             display_name = guess_name(name or "", "", text)
+            if years_val is None:
+                years_val = estimate_years_experience(text)
             resume_id = slugify(display_name)
             meta = {"name": display_name, "text": text}
             if tag_list:
@@ -425,6 +473,7 @@ async def upload_resume(
                 continue
             display_name = guess_name(name or "", filename, file_text)
             resume_id = slugify(display_name)
+            file_years = years_val if years_val is not None else estimate_years_experience(file_text)
             meta = {"name": display_name, "text": file_text}
             if tag_list:
                 meta["tags"] = tag_list
@@ -432,8 +481,8 @@ async def upload_resume(
                 meta["skills"] = skill_list
             if loc_val:
                 meta["location"] = loc_val
-            if years_val is not None:
-                meta["years"] = years_val
+            if file_years is not None:
+                meta["years"] = file_years
             add_resume_to_pinecone(file_text, resume_id, meta, "resumes")
             doc = {"resume_id": resume_id, "name": display_name, "text": file_text}
             if tag_list:
@@ -442,8 +491,8 @@ async def upload_resume(
                 doc["skills"] = skill_list
             if loc_val:
                 doc["location"] = loc_val
-            if years_val is not None:
-                doc["years"] = years_val
+            if file_years is not None:
+                doc["years"] = file_years
             try:
                 await resumes_collection.insert_one(doc)
             except Exception as e:  # pragma: no cover
