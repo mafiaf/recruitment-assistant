@@ -16,8 +16,9 @@
         autocomplete="off">
     <input id="resume-file"
            type="file"
-           name="file"
+           name="files"
            accept=".pdf,.docx"
+           multiple
            class="hidden">
     <p class="text-lg text-gray-500 mb-4 pointer-events-none">
       Drag &amp; drop a résumé PDF / DOCX here<br>
@@ -71,32 +72,14 @@
 const dropZone  = document.getElementById('resume-form');
 const fileInput = document.getElementById('resume-file');
 const browseBtn = document.getElementById('select-btn');
-const uploadsTb = document.querySelector('#uploads-table tbody');
 
-/* helper: add a new row without reloading */
-function prependRow(name, id){
-  const tr = document.createElement('tr');
-  tr.className = 'odd:bg-white even:bg-gray-50';
-  tr.innerHTML = `
-    <td class="px-4 py-2">${name}</td>
-    <td class="px-2 py-2">just now</td>
-    <td class="px-2 py-2 space-x-3">
-      <a href="/resumes#${id}" class="text-blue-600 hover:underline">edit</a>
-      <form action="/delete_resume" method="post" class="inline">
-        <input type="hidden" name="id" value="${id}">
-        <button class="text-red-600 hover:underline"
-                onclick="return confirm('Delete?')">delete</button>
-      </form>
-    </td>`;
-  uploadsTb.prepend(tr);
-}
 
 /* click → open picker */
 browseBtn.onclick = () => fileInput.click();
 
 /* picker → send via fetch */
 fileInput.onchange = () => {
-  if (fileInput.files.length) uploadFile(fileInput.files[0]);
+  if (fileInput.files.length) uploadFiles(fileInput.files);
 };
 
 /* drag-and-drop visual cues */
@@ -116,25 +99,22 @@ fileInput.onchange = () => {
 /* drop handler */
 dropZone.addEventListener('drop', e=>{
   if (e.dataTransfer.files.length){
-    uploadFile(e.dataTransfer.files[0]);
+    uploadFiles(e.dataTransfer.files);
   }
 });
 
 /* core upload logic */
-async function uploadFile(file){
+async function uploadFiles(files){
   const fd = new FormData();
-  fd.append('file', file);
+  for(const file of files) fd.append('files', file);
   /* you could collect additional fields here (e.g. name) */
 
   try{
     const res = await fetch('/upload_resume', {method:'POST', body: fd});
     if(!res.ok) throw new Error(await res.text());
 
-    const msg = await res.text();   // server returns full HTML page
-    // a cheap way: peek at the popup message to get the ID & name
-    const m = msg.match(/ID (\S+)\./);          // "... added with ID xyz."
-    const id = m ? m[1] : crypto.randomUUID();
-    prependRow(file.name, id);
+    await res.text();               // response not parsed
+    location.reload();
   }catch(err){
     alert('Upload failed: ' + err);
   }finally{
