@@ -1,0 +1,18 @@
+{% extends "_base.html" %}
+{% set active = "/projects" %}
+{% set page_title = "Projects" %}
+
+{% block body %}
+<div class="space-y-6">
+  {% if projects %}
+    {% for p in projects %}
+      <section class="bg-white/70 backdrop-blur p-4 rounded shadow">
+        <div class="mb-2 text-sm whitespace-pre-wrap">{{ p.description }}</div>
+        <div class="overflow-auto">{{ p.table_html | safe }}</div>
+      </section>
+    {% endfor %}
+  {% else %}
+    <p>No past projects found.</p>
+  {% endif %}
+</div>
+{% endblock %}

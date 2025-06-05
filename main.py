@@ -33,6 +33,7 @@ from db import (
     resumes_all,
     resumes_by_ids,
     resumes_collection,
+    add_project_history,
 )
 
 from mongo_utils import db, _users, update_resume, delete_resume_by_id, ENV, _guard
@@ -653,19 +654,19 @@ async def match_project(
         '</div>'
     )
 
-    chat_upsert(
-        user_id,
-        {"$set": {"last_project": {
-            "description": description,
-            "table_md":  table_md,
-            "candidates": [
-                {"name": m.metadata["name"],
-                 "fit":  m.sim_pct,
-                 "text": m.metadata["text"]}
-                for m in matches
-            ]
-        }}}
-    )
+    project = {
+        "description": description,
+        "table_md": table_md,
+        "table_html": table_html,
+        "candidates": [
+            {"name": m.metadata["name"],
+             "fit": m.sim_pct,
+             "text": m.metadata["text"]}
+            for m in matches
+        ],
+    }
+
+    add_project_history(user_id, project)
 
     return HTMLResponse(content=html_fragment)
 
@@ -693,6 +694,22 @@ def list_resumes(request: Request, user=Depends(require_login)):
     return render(request, "resumes.html",
                   {"resumes": resumes_for_tpl},
                   page_title="Résumés", active="/resumes")
+
+
+@app.get("/projects", response_class=HTMLResponse)
+def project_history(request: Request, user=Depends(require_login)):
+    session_user = get_current_user(request.cookies.get(COOKIE_NAME))
+    user_id = session_user["username"] if session_user else "anon"
+    doc = chat_find_one({"user_id": user_id}) or {}
+    projects = doc.get("projects", [])
+    projects = sorted(projects, key=lambda p: p.get("ts", 0), reverse=True)
+    return render(
+        request,
+        "projects.html",
+        {"projects": projects},
+        page_title="Projects",
+        active="/projects",
+    )
 
 @app.get("/view_resumes", response_class=HTMLResponse)
 async def view_resumes(request: Request, user=Depends(require_login)):
