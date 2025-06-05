@@ -3,10 +3,12 @@
 {% set active = "/resumes" %}
 
 {% block body %}
-<div class="max-w-4xl mx-auto bg-white/70 backdrop-blur p-6 rounded-xl shadow">
+
+<div class="max-w-4xl mx-auto card">
   <div class="flex items-center mb-6">
     <a href="/resumes" class="mr-4 text-2xl text-gray-600 hover:text-gray-900">&larr;</a>
-    <h2 class="text-2xl font-semibold">Edit résumé</h2>
+    <h2 class="text-2xl font-semibold text-indigo-600">Edit résumé</h2>
+    
   </div>
   <form action="/update_resume" method="post" class="space-y-6">
     <input type="hidden" name="resume_id" value="{{ resume.resume_id }}">
@@ -15,7 +17,9 @@
       <label class="block font-medium mb-1">Name</label>
       <input name="name"
              value="{{ resume.name }}"
-             class="w-full border rounded px-3 py-2"
+
+             class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+
              required>
     </div>
 
@@ -23,13 +27,14 @@
       <label class="block font-medium mb-1">Text</label>
       <textarea name="text"
                 rows="18"
-                class="w-full border rounded px-3 py-2 font-mono"
+
+                class="w-full border rounded px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 required>{{ resume.text }}</textarea>
     </div>
 
-    <button class="px-6 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">
+    <button class="px-6 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">
       Save changes
     </button>
-</form>
+  </form>
 </div>
 {% endblock %}
