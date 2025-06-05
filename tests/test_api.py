@@ -38,3 +38,8 @@ async def test_chat_json(authed):
     resp = await main.chat(DummyRequest("/chat"), chat_data=main.ChatRequest(text="hello", candidate_ids=[]))
     assert resp.status_code == 200
     assert resp.body == b'{"reply":"hi"}' or resp.body == b'{"reply": "hi"}'
+
+
+def test_delete_project(authed):
+    resp = main.delete_project_route(DummyRequest("/delete_project"), ts="2023-01-01T00:00:00")
+    assert resp.status_code == 303
