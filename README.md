@@ -22,3 +22,9 @@ pytest
 ```
 
 The tests use FastAPI's `TestClient` and check the login flow.
+
+## Session Cookies
+
+Session cookies are signed using `itsdangerous`. When `ENV` is set to
+`production`, cookies are marked as `Secure` so browsers only send them over
+HTTPS.

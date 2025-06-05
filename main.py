@@ -135,8 +135,8 @@ def set_session(resp, user: dict):
         token,
         max_age=8 * 3600,
         httponly=True,
-        secure=False,          
-        samesite="strict"      
+        secure=(ENV == "production"),
+        samesite="strict"
     )
 
 def clear_session(resp):
