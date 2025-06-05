@@ -51,10 +51,14 @@ DEFAULT_NAMESPACE = "resumes"  # namespace stays the same in both envs
 def add_resume_to_pinecone(
     text: str,
     candidate_id: str,
-    metadata: dict,
+    metadata: dict | None = None,
     namespace: str = DEFAULT_NAMESPACE,
+    tags: list[str] | None = None,
 ):
     """Insert or update a résumé vector in Pinecone."""
+    metadata = metadata.copy() if metadata else {}
+    if tags is not None:
+        metadata["tags"] = tags
     vector = embed_text(text)
     if not vector or len(vector) != 1536:
         logger.warning(
