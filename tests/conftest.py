@@ -3,14 +3,16 @@ import types
 
 # ── heavyweight deps we want to stub ──────────────────────────────────────────
 mods = {
+    'markdown': {'markdown': lambda text, extensions=None: text},
     'mammoth': {},
     'numpy': {'array': lambda x: x},
     'openai': {},
     'pdfplumber': {},
     'PyPDF2': {'PdfReader': lambda *a, **k: types.SimpleNamespace(pages=[])},
     'docx': {'Document': lambda *a, **k: None},
-    'dotenv': {'load_dotenv': lambda: None},
+    'dotenv': {'load_dotenv': lambda *a, **k: None},
     'certifi': {'where': lambda: ''},
+    'bleach': {'clean': lambda text, tags=None, strip=False: text},
     # itsdangerous minimal signer
     'itsdangerous': {
         'URLSafeTimedSerializer': lambda *a, **k: types.SimpleNamespace(
@@ -391,7 +393,7 @@ if 'fastapi.testclient' not in sys.modules:
                 return main.login_form(req)
             return _t.SimpleNamespace(status_code=404)
 
-        def post(self, path, data=None, **kw):
+        def post(self, path, data=None, files=None, **kw):
             import main, asyncio, types as _t
             if path == '/login':
                 req = _t.SimpleNamespace(url=_t.SimpleNamespace(path=path), cookies={})
@@ -400,6 +402,23 @@ if 'fastapi.testclient' not in sys.modules:
                         req,
                         username=data.get('username'),
                         password=data.get('password'),
+                    )
+                )
+            if path == '/upload_resume':
+                req = _t.SimpleNamespace(url=_t.SimpleNamespace(path=path), cookies={})
+                file = None
+                if files and 'file' in files:
+                    filename, content = files['file'][:2]
+                    async def _read():
+                        return content
+                    file = _t.SimpleNamespace(filename=filename, read=_read)
+                return asyncio.run(
+                    main.upload_resume(
+                        req,
+                        file=file,
+                        name=(data or {}).get('name'),
+                        text=(data or {}).get('text'),
+                        resume=None,
                     )
                 )
             return _t.SimpleNamespace(status_code=404)
