@@ -629,8 +629,8 @@ async def list_resumes(
     page: int = 1,
     skill: str = "",
     location: str = "",
-    min_years: int = 0,
-    max_years: int = 0,
+    min_years: int | None = None,
+    max_years: int | None = None,
     user=Depends(require_login),
 ):
     """Paginated résumé overview. Works even when MongoDB is offline."""
@@ -639,9 +639,9 @@ async def list_resumes(
         filters["skill"] = skill
     if location:
         filters["location"] = location
-    if min_years:
+    if min_years is not None:
         filters["min_years"] = min_years
-    if max_years:
+    if max_years is not None:
         filters["max_years"] = max_years
 
     try:
@@ -674,9 +674,9 @@ async def list_resumes(
         query["skill"] = skill
     if location:
         query["location"] = location
-    if min_years:
+    if min_years is not None:
         query["min_years"] = min_years
-    if max_years:
+    if max_years is not None:
         query["max_years"] = max_years
     qs = urlencode(query)
 
@@ -688,8 +688,8 @@ async def list_resumes(
         "next_page": page + 1 if page < pages else None,
         "skill": skill,
         "location": location,
-        "min_years": min_years if min_years else "",
-        "max_years": max_years if max_years else "",
+        "min_years": min_years if min_years is not None else "",
+        "max_years": max_years if max_years is not None else "",
         "qs": qs,
     }
     return await render(
