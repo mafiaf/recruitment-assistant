@@ -4,6 +4,9 @@ from typing import List, Optional
 class ResumeUpload(BaseModel):
     name: Optional[str] = ""
     text: str
+    skills: Optional[List[str]] = None
+    location: Optional[str] = None
+    years: Optional[int] = None
 
 class ChatRequest(BaseModel):
     text: str
