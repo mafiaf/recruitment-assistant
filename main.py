@@ -42,6 +42,7 @@ from pinecone_utils import (
     index,
     search_best_resumes,
 )
+from utils import sanitize_markdown
 
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -208,9 +209,17 @@ def chat_interface(request: Request, user=Depends(require_login)):
 
     last_proj = doc.get("last_project", {})   # (keep if you still need it)
 
-    return render(request, "chat.html",
-                  {"history": history, "candidates": candidates},
-                  page_title="Chat")
+    safe_history = [
+        {"role": m.get("role"), "content": sanitize_markdown(m.get("content", ""))}
+        for m in history if isinstance(m, dict)
+    ]
+
+    return render(
+        request,
+        "chat.html",
+        {"history": safe_history, "candidates": candidates},
+        page_title="Chat",
+    )
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -276,6 +285,7 @@ async def chat(request: Request, user=Depends(require_login)):
         max_tokens=600,
     )
     assistant_reply = resp.choices[0].message.content.strip()
+    safe_reply = sanitize_markdown(assistant_reply)
 
     # 7️⃣ persist updated history
     history.extend(
@@ -286,7 +296,7 @@ async def chat(request: Request, user=Depends(require_login)):
     )
     chat_upsert(user_id, {"messages": history})
 
-    return {"reply": assistant_reply}
+    return {"reply": safe_reply}
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -328,11 +338,15 @@ async def chat_action(
             {"role": "user", "content": prompt},
         ],
     ).choices[0].message.content
+    safe_reply = sanitize_markdown(reply)
 
     candidates = [{"id": r["resume_id"], "name": r["name"]} for r in resumes_all()]
-    return render(request, "chat.html",
-                  {"reply": reply, "candidates": candidates},
-                  page_title="Chat")
+    return render(
+        request,
+        "chat.html",
+        {"reply": safe_reply, "candidates": candidates},
+        page_title="Chat",
+    )
 
 # ═════════════════════════════════════════════════════════════════════════════
 # upload résumé – saves to Pinecone + Mongo (if available)
