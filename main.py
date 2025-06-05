@@ -4,6 +4,7 @@ import io
 import os
 import re
 import uuid
+import logging
 from types import SimpleNamespace
 from typing import List, Optional
 from bson import ObjectId
@@ -44,6 +45,7 @@ from pinecone_utils import (
 )
 
 load_dotenv()
+logging.basicConfig(level=logging.INFO)
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = FastAPI()
@@ -151,7 +153,7 @@ def seed_owner():
             os.getenv("OWNER_PASS", "changeme!"),
             role="owner",
         )
-        print("🟢 Created initial owner account")    
+        logging.info("🟢 Created initial owner account")
 
 # ═════════════════════════════════════════════════════════════════════════════
 # PDF & DOCX extraction helpers
@@ -406,7 +408,7 @@ async def upload_resume(
             {"resume_id": resume_id, "name": display_name, "text": text}
         )
     except Exception as e:            # pragma: no cover
-        print("🛑 Mongo insert failed:", e)
+        logging.error("🛑 Mongo insert failed: %s", e)
 
     return render(request, "index.html",
                   {"popup": f"Résumé added: {display_name}"},
@@ -587,11 +589,9 @@ async def match_project(
         # 6️⃣ render ---------------------------------------------------
         # Log raw Markdown in the server console for debugging
 
-    print(
-        "\n— GPT table markdown —\n"
-        f"{table_md}\n"
-        "——————————————\n",
-        flush=True,
+    logging.info(
+        "\n— GPT table markdown —\n%s\n——————————————",
+        table_md,
     )
 
     if rows:
@@ -636,7 +636,7 @@ def list_resumes(request: Request, user=Depends(require_login)):
     try:
         docs = resumes_all()          # <- new helper (returns [] if DB down)
     except Exception as e:            # pragma: no cover
-        print("⚠️  resumes_all() failed:", e)
+        logging.warning("⚠️  resumes_all() failed: %s", e)
         docs = []
 
     # normalise for the template
@@ -657,7 +657,7 @@ def list_resumes(request: Request, user=Depends(require_login)):
 async def view_resumes(request: Request, user=Depends(require_login)):
     # Search all resumes from the "resumes" namespace
     try:
-        print("🟢 Querying Pinecone for all resumes...")
+        logging.info("🟢 Querying Pinecone for all resumes...")
         results = index.query(
             vector=[0] * 1536,  # Placeholder vector for getting all records
             top_k=10,  # Adjust the number of records returned
@@ -666,14 +666,14 @@ async def view_resumes(request: Request, user=Depends(require_login)):
         )
 
         if results.matches:
-            print(f"🟢 Found {len(results.matches)} resumes in Pinecone.")
+            logging.info("🟢 Found %d resumes in Pinecone.", len(results.matches))
         else:
-            print("🛑 No matches found in Pinecone.")
+            logging.warning("🛑 No matches found in Pinecone.")
 
         # Prepare results to send to the frontend
         resumes = []
         for match in results.matches:
-            print(f"🟢 Resume: {match.id}, Name: {match.metadata.get('name', 'Unknown')}")
+            logging.info("🟢 Resume: %s, Name: %s", match.id, match.metadata.get('name', 'Unknown'))
             resumes.append({
                 "id": match.id,
                 "name": match.metadata.get("name", "Unknown"),
@@ -685,7 +685,7 @@ async def view_resumes(request: Request, user=Depends(require_login)):
                         page_title="Résumés", active="/resumes")
 
     except Exception as e:
-        print("🛑 Pinecone query failed:", e)
+        logging.error("🛑 Pinecone query failed: %s", e)
         return render(request, "resumes.html",
                       {"resumes": resumes},
                         page_title="Résumés", active="/resumes")
@@ -704,7 +704,7 @@ def edit_resume(request: Request, id: str, user=Depends(require_login)):
         if not doc and ObjectId.is_valid(id):
             doc = resumes_collection.find_one({"_id": ObjectId(id)})
     except Exception as e:
-        print("🛑 Mongo lookup failed:", e)
+        logging.error("🛑 Mongo lookup failed: %s", e)
 
     if not doc:                        # still nothing → 404
         return PlainTextResponse("Résumé not found", status_code=404)
@@ -727,26 +727,26 @@ def update_resume_route(
         text: str      = Form(...)):
     modified = update_resume(resume_id, name, text)
     if not modified:
-        print(f"🛑 Nothing updated for resume_id {resume_id!r}")
+        logging.warning("🛑 Nothing updated for resume_id %r", resume_id)
     return RedirectResponse("/resumes", status_code=303)
 
 @app.post("/delete_resume")
 async def delete_resume_route(id: str = Form(...)):
-    print(f"🟢 Deleting resume with ID: {id}")
+    logging.info("🟢 Deleting resume with ID: %s", id)
 
     # 1. Delete from MongoDB
     deleted_count = delete_resume_by_id(id)
     if deleted_count > 0:
-        print(f"✅ Deleted {deleted_count} doc(s) from MongoDB.")
+        logging.info("✅ Deleted %d doc(s) from MongoDB.", deleted_count)
     else:
-        print(f"🛑 No MongoDB doc with resume_id {id}, will still try Pinecone.")
+        logging.warning("🛑 No MongoDB doc with resume_id %s, will still try Pinecone.", id)
 
     # 2. Delete from Pinecone
     try:
         index.delete(ids=[id], namespace="resumes")
-        print(f"✅ Deleted {id} from Pinecone.")
+        logging.info("✅ Deleted %s from Pinecone.", id)
     except Exception as e:
-        print(f"🛑 Pinecone deletion failed for {id}: {e}")
+        logging.error("🛑 Pinecone deletion failed for %s: %s", id, e)
 
     return RedirectResponse("/resumes", status_code=303)
 

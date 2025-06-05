@@ -26,7 +26,11 @@ client = MongoClient(
 
 db = client[DB_NAME]
 _resumes = db["resumes"]
-print(f"🟢 mongo_utils ready – DB: {DB_NAME} / collection: {_resumes.name}")
+logging.info(
+    "🟢 mongo_utils ready – DB: %s / collection: %s",
+    DB_NAME,
+    _resumes.name,
+)
 
 # ------------------------------------------------------------------ #
 # 2) small wrapper: first call triggers handshake; if it fails we   #

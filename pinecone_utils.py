@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from pinecone import Pinecone, ServerlessSpec
 import openai
+import logging
 
 load_dotenv()
 
@@ -39,7 +40,7 @@ def embed_text(text: str):
         )
         return response.data[0].embedding
     except Exception as e:
-        print("🛑 Error generating embedding:", e)
+        logging.error("🛑 Error generating embedding: %s", e)
         return None
 
 # 🔹 Add résumé vector to Pinecone
@@ -49,11 +50,11 @@ def add_resume_to_pinecone(text: str, candidate_id: str, metadata: dict, namespa
     """
     vector = embed_text(text)
     if not vector or len(vector) != 1536:
-        print(f"🛑 Invalid embedding length: {len(vector) if vector else 'None'}")
+        logging.error("🛑 Invalid embedding length: %s", len(vector) if vector else 'None')
         return
 
     try:
-        print(f"🟢 Upserting to namespace '{namespace}': {candidate_id}")
+        logging.info("🟢 Upserting to namespace '%s': %s", namespace, candidate_id)
         index.upsert(
             vectors=[{
                 "id": candidate_id,
@@ -62,11 +63,11 @@ def add_resume_to_pinecone(text: str, candidate_id: str, metadata: dict, namespa
             }],
             namespace=namespace
         )
-        print("✅ Upsert complete")
+        logging.info("✅ Upsert complete")
         stats = index.describe_index_stats()
-        print("📊 Index stats:", stats)
+        logging.info("📊 Index stats: %s", stats)
     except Exception as e:
-        print("🛑 Pinecone upsert failed:", e)
+        logging.error("🛑 Pinecone upsert failed: %s", e)
 
 # 🔹 Search best candidates by matching to a project
 def search_best_resumes(project_description: str, top_k: int = 5, namespace: str = "resumes"):
@@ -86,7 +87,7 @@ def search_best_resumes(project_description: str, top_k: int = 5, namespace: str
         )
         return results.matches
     except Exception as e:
-        print("🛑 Pinecone search failed:", e)
+        logging.error("🛑 Pinecone search failed: %s", e)
         return []
 
 # 🔹 Delete a résumé from Pinecone
@@ -95,8 +96,12 @@ def delete_resume_from_pinecone(resume_id: str, namespace: str = "resumes"):
     Deletes the vector with the given resume_id from Pinecone namespace.
     """
     try:
-        print(f"🟢 Deleting from Pinecone: {resume_id} namespace={namespace}")
+        logging.info(
+            "🟢 Deleting from Pinecone: %s namespace=%s",
+            resume_id,
+            namespace,
+        )
         index.delete(ids=[resume_id], namespace=namespace)
-        print(f"✅ Deleted from Pinecone: {resume_id}")
+        logging.info("✅ Deleted from Pinecone: %s", resume_id)
     except Exception as e:
-        print(f"🛑 Error deleting from Pinecone: {resume_id} - {e}")
+        logging.error("🛑 Error deleting from Pinecone: %s - %s", resume_id, e)
