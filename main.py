@@ -52,7 +52,7 @@ from utils import sanitize_markdown
 from schemas import ResumeUpload, ChatRequest
 
 env_file = ".env.production" if os.getenv("ENV", "development").lower() == "production" else ".env.development"
-load_dotenv()
+load_dotenv(env_file)
 
 if ENV == "production":
     _users.create_index("username", unique=True)

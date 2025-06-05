@@ -14,7 +14,7 @@ from passlib.hash import bcrypt
 from pinecone_utils import add_resume_to_pinecone
 
 env_file = ".env.production" if os.getenv("ENV", "development").lower() == "production" else ".env.development"
-load_dotenv()
+load_dotenv(env_file)
 
 # ------------------------------------------------------------------ #
 # 0) environment & configuration                                     #
