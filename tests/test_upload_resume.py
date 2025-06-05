@@ -30,3 +30,14 @@ def test_upload_resume_file(client):
     assert resp.status_code == 200
     assert len(stored) == 1
     assert stored[0]["text"] == "Sample text"
+
+
+def test_upload_resume_file_upload(client, monkeypatch):
+    c, stored = client
+    monkeypatch.setattr(main, "extract_text", lambda b, fn: "PDF text")
+    files = {"file": ("resume.pdf", b"%PDF-1.4 ...")}
+    data = {"name": "Alice"}
+    resp = c.post("/upload_resume", data=data, files=files)
+    assert resp.status_code == 200
+    assert len(stored) == 1
+    assert stored[0]["text"] == "PDF text"
