@@ -118,6 +118,7 @@ async def update_resume(
     skills: List[str] | None = None,
     location: str | None = None,
     years: int | None = None,
+    tags: List[str] | None = None,
 ) -> int:
     old = await _resumes.find_one({"resume_id": resume_id})
     if not old:
@@ -130,23 +131,31 @@ async def update_resume(
         update_fields["location"] = location
     if years is not None:
         update_fields["years"] = years
+    if tags is not None:
+        update_fields["tags"] = tags
 
     res = await _resumes.update_one(
         {"resume_id": resume_id},
         {"$set": update_fields},
     )
 
+    meta = {"name": name, "text": text if text.strip() else old.get("text", "")}
+    if tags is not None:
+        meta["tags"] = tags
+    elif old.get("tags"):
+        meta["tags"] = old.get("tags")
+
     if text.strip() != old.get("text", ""):
         add_resume_to_pinecone(
             text,
             resume_id,
-            {"name": name, "text": text},
+            meta,
             namespace="resumes",
         )
     else:
         from pinecone_utils import index
         index.upsert(
-            vectors=[(resume_id, None, {"name": name})],
+            vectors=[(resume_id, None, meta)],
             namespace="resumes",
         )
 
