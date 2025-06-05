@@ -49,6 +49,7 @@ from pinecone_utils import (
     search_best_resumes,
 )
 from utils import sanitize_markdown
+from schemas import ResumeUpload, ChatRequest
 
 env_file = ".env.production" if os.getenv("ENV", "development").lower() == "production" else ".env.development"
 load_dotenv()
@@ -255,10 +256,11 @@ def chat_interface(request: Request, user=Depends(require_login)):
 # /chat  – text follow-ups (no file upload)
 # ──────────────────────────────────────────────────────────────────────────
 @app.post("/chat", response_class=JSONResponse)
-async def chat(request: Request, user=Depends(require_login)):
-    payload      = await request.json()
-    user_text    = payload.get("text", "").strip()
-    selected_ids = payload.get("candidate_ids", [])        # list[str]
+async def chat(request: Request,
+               chat_data: ChatRequest = Body(...),
+               user=Depends(require_login)):
+    user_text    = chat_data.text.strip()
+    selected_ids = chat_data.candidate_ids        # list[str]
     session_user = get_current_user(request.cookies.get(COOKIE_NAME))
     user_id      = session_user["username"] if session_user else "anon"
 
@@ -416,51 +418,11 @@ def slugify(val: str) -> str:
 @app.post("/upload_resume", response_class=HTMLResponse)
 async def upload_resume(
     request: Request,
-    user          = Depends(require_login),
-    name: str     = Form(""),
-    text: str     = Form(""),
-    files: List[UploadFile] = File(None),
+    resume: ResumeUpload = Body(...),
+    user=Depends(require_login),
 ):
-    names = []
-    if files:
-        for f in files:
-            if not f or not f.filename:
-                continue
-            data = await f.read()
-            txt = extract_text(data, f.filename)
-            if not txt:
-                return render(
-                    request,
-                    "index.html",
-                    {"popup": "Unsupported file type."},
-                    page_title="Home",
-                )
-            if not txt.strip():
-                return render(
-                    request,
-                    "index.html",
-                    {"popup": "Résumé text is empty."},
-                    page_title="Home",
-                )
-
-            display_name = guess_name(name, f.filename, txt)
-            resume_id = slugify(display_name)
-            add_resume_to_pinecone(
-                txt,
-                resume_id,
-                {"name": display_name, "text": txt},
-                "resumes",
-            )
-            try:
-                resumes_collection.insert_one(
-                    {"resume_id": resume_id, "name": display_name, "text": txt}
-                )
-            except Exception as e:  # pragma: no cover
-                print("🛑 Mongo insert failed:", e)
-            names.append(display_name)
-        popup = f"{len(names)} résumé(s) added: {', '.join(names)}"
-        return render(request, "index.html", {"popup": popup}, page_title="Home")
-
+    name = resume.name or ""
+    text = resume.text or ""
     if not text.strip():
         return render(
             request,
