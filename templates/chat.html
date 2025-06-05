@@ -31,7 +31,7 @@
                     {{ 'bg-blue-100' if msg.role=='user' else 'bg-rose-100' }}
                     whitespace-pre-wrap">
           <strong>{{ 'You' if msg.role=='user' else 'Assistant' }}:</strong>
-          {{ msg.content }}
+          {{ msg.content | safe }}
         </div>
       </div>
       {% endfor %}
