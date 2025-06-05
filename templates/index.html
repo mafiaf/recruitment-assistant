@@ -114,10 +114,12 @@ function createBar(name){
   wrapper.className = 'my-2';
   wrapper.innerHTML = `
     <div class="text-sm mb-1">${name}</div>
-    <div class="w-full bg-gray-200 rounded"><div class="h-2 bg-blue-600 rounded" style="width:0%"></div></div>
+    <div class="relative w-full h-2 bg-white border border-blue-200 rounded">
+      <div class="absolute left-0 top-0 h-full bg-blue-600 rounded bar" style="width:0%"></div>
+    </div>
   `;
   progressBox.appendChild(wrapper);
-  return wrapper.querySelector('.h-2');
+  return wrapper.querySelector('.bar');
 }
 
 function uploadFiles(files){
