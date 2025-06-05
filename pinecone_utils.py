@@ -2,6 +2,7 @@ from pinecone import Pinecone, ServerlessSpec
 import openai
 
 from settings import settings
+from logger import logger
 
 ENV = settings.ENV
 
@@ -40,7 +41,7 @@ def embed_text(text: str):
         )
         return response.data[0].embedding
     except Exception as e:
-        print("🛑 Error generating embedding:", e)
+        logger.error("Error generating embedding: %s", e)
         return None
 
 
@@ -56,11 +57,19 @@ def add_resume_to_pinecone(
     """Insert or update a résumé vector in Pinecone."""
     vector = embed_text(text)
     if not vector or len(vector) != 1536:
-        print(f"🛑 Invalid embedding length: {len(vector) if vector else 'None'}")
+        logger.warning(
+            "Invalid embedding length: %s",
+            len(vector) if vector else "None",
+        )
         return
 
     try:
-        print(f"🟢 Upserting to index '{INDEX_NAME}' namespace '{namespace}': {candidate_id}")
+        logger.info(
+            "Upserting to index '%s' namespace '%s': %s",
+            INDEX_NAME,
+            namespace,
+            candidate_id,
+        )
         index.upsert(
             vectors=[{
                 "id": candidate_id,
@@ -69,9 +78,9 @@ def add_resume_to_pinecone(
             }],
             namespace=namespace,
         )
-        print("✅ Upsert complete")
+        logger.info("Upsert complete")
     except Exception as e:
-        print("🛑 Pinecone upsert failed:", e)
+        logger.error("Pinecone upsert failed: %s", e)
 
 
 def search_best_resumes(
@@ -92,15 +101,20 @@ def search_best_resumes(
         )
         return results.matches
     except Exception as e:
-        print("🛑 Pinecone search failed:", e)
+        logger.error("Pinecone search failed: %s", e)
         return []
 
 
 def delete_resume_from_pinecone(resume_id: str, namespace: str = DEFAULT_NAMESPACE):
     """Delete a résumé vector by id."""
     try:
-        print(f"🟢 Deleting from index '{INDEX_NAME}' namespace '{namespace}': {resume_id}")
+        logger.info(
+            "Deleting from index '%s' namespace '%s': %s",
+            INDEX_NAME,
+            namespace,
+            resume_id,
+        )
         index.delete(ids=[resume_id], namespace=namespace)
-        print("✅ Deleted from Pinecone: {resume_id}")
+        logger.info("Deleted from Pinecone: %s", resume_id)
     except Exception as e:
-        print(f"🛑 Error deleting from Pinecone: {resume_id} - {e}")
+        logger.error("Error deleting from Pinecone: %s - %s", resume_id, e)
