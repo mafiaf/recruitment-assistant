@@ -14,7 +14,6 @@ import openai
 import pdfplumber
 import PyPDF2
 from docx import Document
-from dotenv import load_dotenv
 from fastapi import Body, FastAPI, File, Form, Request, UploadFile, Depends, HTTPException, status, Cookie
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, PlainTextResponse, FileResponse
@@ -24,6 +23,8 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature
 from starlette.responses import RedirectResponse
 from passlib.context import CryptContext
 from datetime import datetime
+
+from settings import settings
 
 
 # ── local helper modules ──────────────────────────────────────────────────────
@@ -52,9 +53,6 @@ from pinecone_utils import (
 from utils import sanitize_markdown
 from schemas import ResumeUpload, ChatRequest
 
-env_file = ".env.production" if os.getenv("ENV", "development").lower() == "production" else ".env.development"
-load_dotenv(env_file)
-
 if ENV == "production":
     _users.create_index("username", unique=True)
 else:
@@ -63,7 +61,7 @@ else:
     except errors.PyMongoError:
         pass
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = settings.OPENAI_API_KEY
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -85,7 +83,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 users_coll = db["users"]
 
 # default password used when resetting user accounts
-DEFAULT_PASSWORD = os.getenv("DEFAULT_PASS", "changeme!")
+DEFAULT_PASSWORD = settings.DEFAULT_PASS
 
 # ── helpers ────────────────────────────────────────────────────────────────
 async def render(request: Request,
@@ -130,7 +128,7 @@ async def verify_password(username: str, password: str):
     return None
 
 # ── signed-cookie session ──────────────────────────────────────────────────
-SECRET_KEY = os.getenv("SESSION_SECRET", "dev-secret")   # set a strong one!
+SECRET_KEY = settings.SESSION_SECRET   # set a strong one!
 signer = URLSafeTimedSerializer(SECRET_KEY, salt="auth-cookie")
 COOKIE_NAME = "session"
 
@@ -179,7 +177,8 @@ async def seed_owner() -> None:
     if await users_coll.count_documents({"role": "owner"}) == 0:
         await create_user(
             os.getenv("OWNER_USER", "owner"),
-            os.getenv("OWNER_PASS", "changeme!"),
+            os.getenv("OWNER_PASS", "changeme!")
+        )
             role="owner"
         )
         print("🟢 Created initial owner account")
