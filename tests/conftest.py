@@ -19,7 +19,7 @@ mods = {
         ),
         'BadSignature': Exception,
     },
-    # jinja2 stub good enough for Starlette / FastAPI
+    # jinja2 stub sufficient for Starlette / FastAPI
     'jinja2': {
         'Environment': type(
             'Env',
@@ -38,7 +38,7 @@ mods = {
         'pass_context': lambda f: f,
         'contextfunction': lambda f: f,
     },
-    # top-level multipart plus placeholder submodule
+    # top-level multipart package with placeholder submodule
     'multipart': {
         '__version__': '0',
         'multipart': types.ModuleType('multipart.multipart'),
@@ -54,7 +54,7 @@ for name, attrs in mods.items():
         if name == 'multipart':
             sys.modules['multipart.multipart'] = attrs['multipart']
 
-# ── enrich multipart with helpers for form/file tests ────────────────────────
+# ── enrich multipart for form / file handling ────────────────────────────────
 from urllib.parse import parse_qs
 
 if 'multipart' in sys.modules:
@@ -124,15 +124,14 @@ if 'multipart' in sys.modules:
     m.MultiPartException = MultiPartException
     sys.modules['multipart.multipart'].parse_options_header = parse_options_header
 
-# fallback multipart multipart
 if 'multipart.multipart' not in sys.modules:
     sub = types.ModuleType('multipart.multipart')
-    sub.parse_options_header = lambda *a, **k: (b'', {})
+    sub.parse_options_header = lambda *_a, **_k: (b'', {})
     sys.modules['multipart.multipart'] = sub
     if 'multipart' in sys.modules:
         sys.modules['multipart'].multipart = sub
 
-# ── minimal httpx with form and file support ──────────────────────────────────
+# ── httpx stub with form / file support ───────────────────────────────────────
 if 'httpx' not in sys.modules:
     httpx = types.ModuleType('httpx')
 
@@ -371,20 +370,6 @@ stub_mongo_utils.ENV = 'test'
 stub_mongo_utils._guard = lambda op: False
 sys.modules['mongo_utils'] = stub_mongo_utils
 
-# ── FastAPI templating fallback (if needed) ───────────────────────────────────
-if 'fastapi.templating' not in sys.modules:
-    templating = types.ModuleType('fastapi.templating')
-
-    class Jinja2Templates:
-        def __init__(self, directory=None):
-            self.directory = directory
-
-        def TemplateResponse(self, name, ctx, status_code=200):
-            return types.SimpleNamespace(status_code=status_code)
-
-    templating.Jinja2Templates = Jinja2Templates
-    sys.modules['fastapi.templating'] = templating
-
 # ── FastAPI TestClient stub ───────────────────────────────────────────────────
 if 'fastapi.testclient' not in sys.modules:
     testclient = types.ModuleType('fastapi.testclient')
@@ -430,7 +415,7 @@ stub_pinecone_utils.index = None
 stub_pinecone_utils.search_best_resumes = lambda *a, **kw: []
 sys.modules['pinecone_utils'] = stub_pinecone_utils
 
-# ── finally load the real main.py so tests can import it ──────────────────────
+# ── finally load main.py so tests can import it ───────────────────────────────
 import importlib.util
 import pathlib
 
