@@ -35,6 +35,10 @@
          class="{{ 'text-blue-600 font-semibold' if active=='/chat' else
                   'text-black hover:text-blue-600' }}">Chat</a>
 
+      <a href="/projects"
+         class="{{ 'text-blue-600 font-semibold' if active=='/projects' else
+                  'text-black hover:text-blue-600' }}">Projects</a>
+
       {# profile for *any* logged-in user #}
       {% if user %}
         <a href="/profile"
