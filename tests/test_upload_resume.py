@@ -11,12 +11,15 @@ def client(monkeypatch):
     stored = []
 
     class FakeColl:
-        def insert_one(self, doc):
+        async def insert_one(self, doc):
             stored.append(doc)
 
     monkeypatch.setattr(main, "add_resume_to_pinecone", lambda *a, **k: None)
     monkeypatch.setattr(main, "resumes_collection", FakeColl())
-    main.app.dependency_overrides[main.require_login] = lambda: {"username": "user"}
+    async def _login():
+        return {"username": "user"}
+
+    main.app.dependency_overrides[main.require_login] = _login
 
     with TestClient(main.app) as c:
         yield c, stored
