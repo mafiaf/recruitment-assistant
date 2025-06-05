@@ -434,6 +434,11 @@ def slugify(val: str) -> str:
         or str(uuid.uuid4())          # absolute fallback
     )
 
+# ── upload validation constants --------------------------------------------
+ALLOWED_EXTENSIONS = {".pdf", ".docx"}
+# default max file size: 5 MB
+MAX_FILE_SIZE = 5 * 1024 * 1024
+
 # ── main upload handler --------------------------------------------------
 @app.post("/upload_resume", response_class=HTMLResponse)
 async def upload_resume(
@@ -490,8 +495,13 @@ async def upload_resume(
             added_names.append(display_name)
 
         for f in files:
-            filename = f.filename
+            filename = f.filename or ""
+            ext = os.path.splitext(filename)[1].lower()
+            if ext not in ALLOWED_EXTENSIONS:
+                continue
             data = await f.read()
+            if len(data) > MAX_FILE_SIZE:
+                continue
             file_text = extract_text(data, filename)
             if not file_text.strip():
                 continue
