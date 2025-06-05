@@ -1,28 +1,24 @@
 # mongo_utils.py – environment-aware Mongo setup (dev vs prod)
-import os
 import certifi
 import logging
 from datetime import datetime
 from types import SimpleNamespace
 from typing import List
 
-from dotenv import load_dotenv
 from pymongo import MongoClient, errors
 from bson import ObjectId
 from passlib.hash import bcrypt
 
+from settings import settings
 from pinecone_utils import add_resume_to_pinecone
-
-env_file = ".env.production" if os.getenv("ENV", "development").lower() == "production" else ".env.development"
-load_dotenv(env_file)
 
 # ------------------------------------------------------------------ #
 # 0) environment & configuration                                     #
 # ------------------------------------------------------------------ #
-ENV = os.getenv("ENV", "development").lower()
+ENV = settings.ENV
 
-MONGO_URI = os.environ["MONGO_URI"]            # Atlas SRV string for both envs
-DB_NAME   = "recruitment_app" if ENV == "production" else "recruitment_app_dev"
+MONGO_URI = settings.MONGO_URI            # Atlas SRV string for both envs
+DB_NAME = settings.db_name
 
 if ENV == "production":
     client = MongoClient(
