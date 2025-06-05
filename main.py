@@ -560,11 +560,22 @@ async def match_project(
     # 4️⃣ build GPT prompt ----------------------------------------------------
     expected_years = extract_years_requirement(description)
     snippets = []
+    years_info = []
     for m in matches:
         tags_str = ", ".join(m.metadata.get('tags', []))
         tag_part = f" [tags: {tags_str}]" if tags_str else ""
         years = m.metadata.get('years')
-        years_part = f" ({years} yrs exp)" if years is not None else ""
+
+        if expected_years and years is not None:
+            years_part = f" ({years}/{expected_years} yrs)"
+            years_info.append(f"{years}/{expected_years}")
+        elif years is not None:
+            years_part = f" ({years} yrs)"
+            years_info.append(str(years))
+        else:
+            years_part = ""
+            years_info.append("—" if expected_years else "—")
+
         snippet = (
             f"- **{m.metadata['name']}**{years_part}{tag_part}: "
             f"{m.metadata['text'].replace(chr(10),' ')[:300]}…"
@@ -633,34 +644,33 @@ async def match_project(
         if len(cells) >= 4:
             name, fit, why, improve = cells[:4]
             rows.append(
-                {"name": name,
-                "fit":  fit.rstrip("%"),
-                "why":  why,
-                "improve": improve}
+                {
+                    "name": name,
+                    "fit": fit.rstrip("%"),
+                    "why": why,
+                    "improve": improve,
+                }
             )
+
+    # add experience column if lengths match
+    if rows and len(rows) == len(years_info):
+        for r, y in zip(rows, years_info):
+            r["years"] = y
 
     # fallback – if parsing still fails just show raw markdown
     if not rows:
         table_html = "<pre style='white-space:pre-wrap'>" + table_md + "</pre>"
     else:
-        table_html = templates.get_template("resume_rank_table.html").render(rows=rows)
+        table_html = templates.get_template("resume_rank_table.html").render(
+            rows=rows,
+            expected_years=expected_years,
+        )
 
         # 6️⃣ render ---------------------------------------------------
         # Log raw Markdown in the server console for debugging
 
     logger.debug("\n— GPT table markdown —\n%s\n——————————————", table_md)
 
-    if rows:
-        table_html = templates.get_template(
-            "resume_rank_table.html"
-        ).render(rows=rows)
-    else:
-        # fall‑back to raw markdown if parsing failed
-        table_html = (
-            "<pre style='white-space:pre-wrap'>" +
-            table_md +
-            "</pre>"
-        )
 
     html_fragment = (
         '<div class="bubble assist"><strong>Assistant:</strong><br>'
