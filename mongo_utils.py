@@ -170,6 +170,27 @@ async def resumes_all():
     return await cursor.to_list(None)
 
 
+async def resumes_count() -> int:
+    """Return total number of résumé documents."""
+    if await _guard("resumes_count"):
+        return 0
+    return await resumes_collection.count_documents({})
+
+
+async def resumes_page(page: int, per_page: int):
+    """Return a single page of résumés sorted by _id descending."""
+    if await _guard("resumes_page"):
+        return []
+    skip = max(0, (page - 1) * per_page)
+    cursor = (
+        resumes_collection.find()
+        .sort("_id", -1)
+        .skip(skip)
+        .limit(per_page)
+    )
+    return await cursor.to_list(None)
+
+
 async def resumes_by_ids(id_list: List[str]):
     if await _guard("resumes_by_ids"):
         return []
