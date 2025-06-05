@@ -1,25 +1,20 @@
-<html>
-<head></head>
-<body>
-  <table style="width:100%; border-collapse: collapse; margin: 15px 0;">
-    <thead>
-      <tr>
-        <th style="border:1px solid #ccc; padding:8px; text-align:left;">Candidate</th>
-        <th style="border:1px solid #ccc; padding:8px; text-align:left;">Why Fit?</th>
-        <th style="border:1px solid #ccc; padding:8px; text-align:left;">Fit</th>
-        <th style="border:1px solid #ccc; padding:8px; text-align:left;">Improve</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in rows %}
-      <tr>
-        <td style="border:1px solid #ccc; padding:8px;">{{ row.name }}</td>
-        <td style="border:1px solid #ccc; padding:8px;">{{ row.why }}</td>
-        <td style="border:1px solid #ccc; padding:8px;">{{ row.fit }}</td>
-        <td style="border:1px solid #ccc; padding:8px;">{{ row.improve }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</body>
-</html>
+<table class="min-w-full border-collapse border border-gray-300 text-sm my-3">
+  <thead class="bg-gray-100">
+    <tr>
+      <th class="border px-2 py-1 text-left">Candidate</th>
+      <th class="border px-2 py-1 text-center">Fit&nbsp;%</th>
+      <th class="border px-2 py-1 text-left">Why Fit?</th>
+      <th class="border px-2 py-1 text-left">Improve</th>
+    </tr>
+  </thead>
+  <tbody class="bg-white">
+    {% for row in rows %}
+    <tr>
+      <td class="border px-2 py-1 font-medium">{{ row.name }}</td>
+      <td class="border px-2 py-1 text-center">{{ row.fit }}</td>
+      <td class="border px-2 py-1">{{ row.why }}</td>
+      <td class="border px-2 py-1">{{ row.improve }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
