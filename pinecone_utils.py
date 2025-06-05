@@ -1,22 +1,17 @@
-import os
-from dotenv import load_dotenv
 from pinecone import Pinecone, ServerlessSpec
 import openai
 
-env_file = ".env.production" if os.getenv("ENV", "development").lower() == "production" else ".env.development"
-load_dotenv(env_file)
+from settings import settings
 
-ENV = os.getenv("ENV", "development").lower()
+ENV = settings.ENV
 
-openai.api_key = os.environ["OPENAI_API_KEY"]
-pc  = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
+openai.api_key = settings.OPENAI_API_KEY
+pc = Pinecone(api_key=settings.PINECONE_API_KEY)
 
 # picks resumes-index for prod, resumes-dev for dev unless overridden
-INDEX_NAME = os.getenv(
-    "PINECONE_INDEX",
-    "resumes-index" if ENV == "production" else "resumes-dev"
-)
-PINECONE_ENV = os.environ["PINECONE_ENV"]
+INDEX_NAME = settings.pinecone_index
+PINECONE_ENV = settings.PINECONE_ENV
+
 
 def _ensure_index():
     if INDEX_NAME not in pc.list_indexes().names():
