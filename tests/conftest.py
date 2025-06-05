@@ -122,6 +122,30 @@ bson = types.ModuleType('bson')
 bson.ObjectId = str
 sys.modules['bson'] = bson
 
+# stub multipart to satisfy FastAPI's form handling
+multipart = types.ModuleType('multipart')
+multipart.__version__ = '0'
+sub = types.ModuleType('multipart.multipart')
+sub.parse_options_header = lambda *a, **kw: None
+multipart.multipart = sub
+sys.modules['multipart'] = multipart
+sys.modules['multipart.multipart'] = sub
+
+# minimal jinja2 stub for starlette.templating
+jinja2 = types.ModuleType('jinja2')
+class _Template:
+    def render(self, context):
+        return ""
+class _Env:
+    def __init__(self):
+        self.globals = {}
+    def get_template(self, name):
+        return _Template()
+jinja2.Environment = lambda **kw: _Env()
+jinja2.FileSystemLoader = lambda *a, **k: None
+jinja2.pass_context = lambda f: f
+sys.modules['jinja2'] = jinja2
+
 # stub custom helper modules used by main
 stub_db = types.ModuleType('db')
 stub_db.chat_find_one = lambda *a, **kw: None
@@ -129,13 +153,29 @@ stub_db.chat_upsert = lambda *a, **kw: None
 stub_db.resumes_all = lambda: []
 stub_db.resumes_by_ids = lambda ids: []
 stub_db.resumes_collection = None
+stub_db.add_project_history = lambda *a, **kw: None
 sys.modules['db'] = stub_db
 
 stub_mongo_utils = types.ModuleType('mongo_utils')
 stub_mongo_utils.update_resume = lambda *a, **kw: None
 stub_mongo_utils.delete_resume_by_id = lambda *a, **kw: None
-stub_mongo_utils.db = {}
-stub_mongo_utils._users = {}
+stub_mongo_utils.db = {"users": {}}
+class _Users:
+    def create_index(self, *a, **kw):
+        pass
+    def count_documents(self, *a, **kw):
+        return 0
+    def insert_one(self, *a, **kw):
+        pass
+    def find_one(self, *a, **kw):
+        return None
+    def delete_one(self, *a, **kw):
+        return types.SimpleNamespace(deleted_count=0)
+    def update_one(self, *a, **kw):
+        return types.SimpleNamespace(modified_count=0)
+    def find(self, *a, **kw):
+        return []
+stub_mongo_utils._users = _Users()
 stub_mongo_utils.ENV = 'test'
 stub_mongo_utils._guard = lambda op: False
 sys.modules['mongo_utils'] = stub_mongo_utils
