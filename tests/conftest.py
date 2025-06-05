@@ -11,10 +11,18 @@ mods = {
     'docx': {'Document': lambda *a, **k: None},
     'dotenv': {'load_dotenv': lambda: None},
     'certifi': {'where': lambda: ''},
-    'itsdangerous': {'URLSafeTimedSerializer': lambda *a, **k: None, 'BadSignature': Exception},
+    'itsdangerous': {
+        # Provide a serializer that returns a fixed token string and returns {} on loads
+        'URLSafeTimedSerializer': lambda *a, **k: types.SimpleNamespace(
+            dumps=lambda obj: 'token',
+            loads=lambda t: {}
+        ),
+        'BadSignature': Exception,
+    },
     'jinja2': {},
     'multipart': {'__version__': '0'},
 }
+
 for name, attrs in mods.items():
     if name not in sys.modules:
         mod = types.ModuleType(name)
@@ -22,6 +30,7 @@ for name, attrs in mods.items():
             setattr(mod, k, v)
         sys.modules[name] = mod
 
+# Ensure multipart.multipart exists and parse_options_header returns a two‐tuple
 if 'multipart.multipart' not in sys.modules:
     sub = types.ModuleType('multipart.multipart')
     sub.parse_options_header = lambda *a, **k: ('', '')
@@ -35,7 +44,7 @@ if 'httpx' not in sys.modules:
 
     class Request:
         def __init__(self, method, url, data=None):
-            from urllib.parse import urlsplit
+            from urllib.parse import urlsplit, urlencode
             parts = urlsplit(url)
             self.method = method
             self.url = types.SimpleNamespace(
@@ -45,7 +54,6 @@ if 'httpx' not in sys.modules:
                 raw_path=parts.path.encode(),
                 query=parts.query.encode(),
             )
-            from urllib.parse import urlencode
             self.headers = {}
             if isinstance(data, bytes):
                 self._content = data
@@ -131,7 +139,6 @@ if 'httpx' not in sys.modules:
         RequestFiles=object,
         AuthTypes=object,
     )
-
     sys.modules['httpx'] = httpx
 
 if 'starlette.templating' not in sys.modules:
@@ -150,10 +157,10 @@ if 'starlette.templating' not in sys.modules:
 
     st_templates.Jinja2Templates = DummyTemplates
     sys.modules['starlette.templating'] = st_templates
+
     fastapi_templating = types.ModuleType('fastapi.templating')
     fastapi_templating.Jinja2Templates = DummyTemplates
     sys.modules['fastapi.templating'] = fastapi_templating
-
 
 # simple form parser replacement to avoid python-multipart dependency
 import starlette.formparsers as fp
@@ -179,10 +186,17 @@ fp.FormParser = SimpleFormParser
 
 # stub passlib with minimal CryptContext
 passlib_context = types.ModuleType('passlib.context')
-passlib_context.CryptContext = lambda **kw: types.SimpleNamespace(hash=lambda p: p, verify=lambda p, h: p == h)
+passlib_context.CryptContext = lambda **kw: types.SimpleNamespace(
+    hash=lambda p: p,
+    verify=lambda p, h: p == h
+)
 sys.modules['passlib.context'] = passlib_context
+
 passlib_hash = types.ModuleType('passlib.hash')
-passlib_hash.bcrypt = types.SimpleNamespace(hash=lambda p: p, verify=lambda p, h: p == h)
+passlib_hash.bcrypt = types.SimpleNamespace(
+    hash=lambda p: p,
+    verify=lambda p, h: p == h
+)
 sys.modules['passlib.hash'] = passlib_hash
 
 # stub Mongo and related modules used by db/mongo_utils
@@ -190,11 +204,14 @@ pymongo = types.ModuleType('pymongo')
 pymongo.MongoClient = lambda *a, **k: None
 pymongo.errors = types.SimpleNamespace(PyMongoError=Exception)
 sys.modules['pymongo'] = pymongo
+
 bson = types.ModuleType('bson')
 bson.ObjectId = str
 sys.modules['bson'] = bson
 
 # stub custom helper modules used by main
+
+# 1) stub a standalone "db" module in case code does "import db"
 stub_db = types.ModuleType('db')
 stub_db.chat_find_one = lambda *a, **kw: None
 stub_db.chat_upsert = lambda *a, **kw: None
@@ -204,14 +221,74 @@ stub_db.resumes_collection = None
 stub_db.add_project_history = lambda *a, **kw: None
 sys.modules['db'] = stub_db
 
+# 2) stub "mongo_utils" with everything from both branches
 stub_mongo_utils = types.ModuleType('mongo_utils')
 stub_mongo_utils.update_resume = lambda *a, **kw: None
 stub_mongo_utils.delete_resume_by_id = lambda *a, **kw: None
-stub_mongo_utils.db = {"users": {}}
+stub_mongo_utils.chat_find_one = lambda *a, **kw: None
+stub_mongo_utils.chat_upsert = lambda *a, **kw: None
+stub_mongo_utils.resumes_all = lambda: []
+stub_mongo_utils.resumes_by_ids = lambda ids: []
+stub_mongo_utils.resumes_collection = None
+stub_mongo_utils.add_project_history = lambda *a, **kw: None
+
+class DummyColl:
+    def __getattr__(self, name):
+        return lambda *a, **k: None
+
+class DummyDB(dict):
+    def __getitem__(self, key):
+        return DummyColl()
+
+stub_mongo_utils.db = DummyDB()
 stub_mongo_utils._users = {}
 stub_mongo_utils.ENV = 'test'
 stub_mongo_utils._guard = lambda op: False
 sys.modules['mongo_utils'] = stub_mongo_utils
+
+# minimal template stub so FastAPI can be imported without jinja2
+if 'fastapi.templating' not in sys.modules:
+    templating = types.ModuleType('fastapi.templating')
+
+    class Jinja2Templates:
+        def __init__(self, directory=None):
+            self.directory = directory
+
+        def TemplateResponse(self, name, ctx, status_code=200):
+            return types.SimpleNamespace(status_code=status_code)
+
+    templating.Jinja2Templates = Jinja2Templates
+    sys.modules['fastapi.templating'] = templating
+
+if 'fastapi.testclient' not in sys.modules:
+    testclient = types.ModuleType('fastapi.testclient')
+
+    class TestClient:
+        def __init__(self, app):
+            self.app = app
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            pass
+
+        def get(self, path, **kw):
+            import main, types as _t
+            if path == '/login':
+                req = _t.SimpleNamespace(url=_t.SimpleNamespace(path=path), cookies={})
+                return main.login_form(req)
+            return _t.SimpleNamespace(status_code=404)
+
+        def post(self, path, data=None, **kw):
+            import main, asyncio, types as _t
+            if path == '/login':
+                req = _t.SimpleNamespace(url=_t.SimpleNamespace(path=path), cookies={})
+                return asyncio.run(main.login_post(req, username=data.get('username'), password=data.get('password')))
+            return _t.SimpleNamespace(status_code=404)
+
+    testclient.TestClient = TestClient
+    sys.modules['fastapi.testclient'] = testclient
 
 stub_pinecone_utils = types.ModuleType('pinecone_utils')
 stub_pinecone_utils.add_resume_to_pinecone = lambda *a, **kw: None
@@ -221,7 +298,8 @@ stub_pinecone_utils.search_best_resumes = lambda *a, **kw: []
 sys.modules['pinecone_utils'] = stub_pinecone_utils
 
 # load main module manually so tests can import it without relying on sys.path
-import importlib.util, pathlib
+import importlib.util
+import pathlib
 root_dir = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(root_dir))
 main_path = root_dir / "main.py"
