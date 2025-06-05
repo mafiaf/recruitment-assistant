@@ -199,8 +199,9 @@ def chat_interface(request: Request, user=Depends(require_login)):
         for r in resumes_all()
     ]
 
-    user_id = "demo_user"                # TODO: real session cookie
-    doc      = chat_find_one(user_id) or {}
+    session_user = get_current_user(request.cookies.get(COOKIE_NAME))
+    user_id = session_user["username"] if session_user else "anon"
+    doc      = chat_find_one({"user_id": user_id}) or {}
     history  = doc.get("messages", [])
 
     if not isinstance(history, list):    # ⬅️ guard against bad data
@@ -221,7 +222,8 @@ async def chat(request: Request, user=Depends(require_login)):
     payload      = await request.json()
     user_text    = payload.get("text", "").strip()
     selected_ids = payload.get("candidate_ids", [])        # list[str]
-    user_id      = "demo_user"                             # TODO real session
+    session_user = get_current_user(request.cookies.get(COOKIE_NAME))
+    user_id      = session_user["username"] if session_user else "anon"
 
     # 1️⃣ fetch previous convo & project context
     doc        = chat_find_one({"user_id": user_id}) or {}
@@ -295,11 +297,13 @@ async def chat(request: Request, user=Depends(require_login)):
 
 @app.post("/chat_action", response_class=HTMLResponse)
 async def chat_action(
-    request: Request, 
+    request: Request,
     user=Depends(require_login),
     action: str = Form(...),
     candidate_ids: List[str] = Form([]),
 ):
+    session_user = get_current_user(request.cookies.get(COOKIE_NAME))
+    user_id = session_user["username"] if session_user else "anon"
     if action == "top5":
         user_instr = "Pick the top 5 candidates and explain briefly why."
     elif action == "python_expert":
@@ -613,7 +617,7 @@ async def match_project(
     )
 
     chat_upsert(
-        "demo_user",
+        user_id,
         {"$set": {"last_project": {
             "description": description,
             "table_md":  table_md,
@@ -755,7 +759,8 @@ async def delete_resume_route(id: str = Form(...)):
 async def chat_followup(request: Request, user=Depends(require_login)):
     payload        = await request.json()
     user_text      = payload.get("message", "").strip()
-    user_id        = "demo_user"                          # TODO real session
+    session_user = get_current_user(request.cookies.get(COOKIE_NAME))
+    user_id        = session_user["username"] if session_user else "anon"
 
     doc = chats.find_one({"user_id": user_id}) or {}
     history  = doc.get("messages", [])
