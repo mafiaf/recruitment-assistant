@@ -634,7 +634,7 @@ async def match_project(
         ],
     }
 
-    add_project_history(user_id, project)
+    await add_project_history(user_id, project)
 
     return HTMLResponse(content=html_fragment)
 
