@@ -9,6 +9,19 @@
   <input id="search" type="text" placeholder="Search…"
          class="mb-4 w-64 px-3 py-2 border rounded">
 
+  <!-- server-side filters -->
+  <form method="get" class="mb-4 space-x-2 text-sm">
+    <input name="skill" placeholder="Skill" value="{{ skill }}"
+           class="px-2 py-1 border rounded">
+    <input name="location" placeholder="Location" value="{{ location }}"
+           class="px-2 py-1 border rounded">
+    <input name="min_years" type="number" placeholder="Min years"
+           value="{{ min_years }}" class="w-24 px-2 py-1 border rounded">
+    <input name="max_years" type="number" placeholder="Max years"
+           value="{{ max_years }}" class="w-24 px-2 py-1 border rounded">
+    <button class="px-2 py-1 bg-indigo-600 text-white rounded">Filter</button>
+  </form>
+
   <!-- résumé table -->
   <table id="cv-table"
          class="w-full text-sm border rounded-xl overflow-hidden shadow">
@@ -59,13 +72,13 @@
 
   <div class="flex justify-between items-center mt-4 text-sm">
     {% if prev_page %}
-      <a href="/resumes?page={{ prev_page }}" class="text-blue-600 hover:underline">&laquo; Prev</a>
+      <a href="/resumes?page={{ prev_page }}{% if qs %}&{{ qs }}{% endif %}" class="text-blue-600 hover:underline">&laquo; Prev</a>
     {% else %}
       <span></span>
     {% endif %}
     <span>Page {{ page }} of {{ pages }}</span>
     {% if next_page %}
-      <a href="/resumes?page={{ next_page }}" class="text-blue-600 hover:underline">Next &raquo;</a>
+      <a href="/resumes?page={{ next_page }}{% if qs %}&{{ qs }}{% endif %}" class="text-blue-600 hover:underline">Next &raquo;</a>
     {% else %}
       <span></span>
     {% endif %}
