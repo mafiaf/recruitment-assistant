@@ -1,6 +1,6 @@
 # mongo_utils.py – environment-aware Mongo setup (dev vs prod)
 import certifi
-import logging
+from logger import logger
 from datetime import datetime
 from types import SimpleNamespace
 from typing import List
@@ -41,7 +41,9 @@ _users   = db["users"]
 resumes_collection = _resumes  # backward compatibility for main.py
 chats = db["chats"]
 
-print(f"🟢 mongo_utils ready – env:{ENV} DB:{DB_NAME} collection:{_resumes.name}")
+logger.info(
+    f"mongo_utils ready – env:{ENV} DB:{DB_NAME} collection:{_resumes.name}"
+)
 
 # create unique index only in production
 async def ensure_indexes():
@@ -49,8 +51,8 @@ async def ensure_indexes():
         try:
             await _users.create_index("username", unique=True)
         except errors.PyMongoError as exc:
-            logging.error("🛑 could not create users.username index")
-            logging.error(exc)
+            logger.error("🛑 could not create users.username index")
+            logger.error(exc)
 
 # ------------------------------------------------------------------ #
 # 1) resilient guard layer                                           #
@@ -60,14 +62,14 @@ _MONGO_DOWN = False
 async def _guard(op: str) -> bool:
     global _MONGO_DOWN
     if _MONGO_DOWN:
-        logging.warning(f"⚠️  mongo down – {op} returns empty/0")
+        logger.warning(f"⚠️  mongo down – {op} returns empty/0")
         return True
     try:
         await client.admin.command("ping")
         return False
     except errors.PyMongoError as exc:
-        logging.error("🛑 Mongo unreachable – switching to NO-DB mode")
-        logging.error(exc)
+        logger.error("🛑 Mongo unreachable – switching to NO-DB mode")
+        logger.error(exc)
         _MONGO_DOWN = True
         return True
 
