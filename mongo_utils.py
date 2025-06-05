@@ -111,14 +111,29 @@ async def get_resumes_by_ids(id_list: List[str]):
         ) for doc in docs
     ]
 
-async def update_resume(resume_id: str, name: str, text: str) -> int:
+async def update_resume(
+    resume_id: str,
+    name: str,
+    text: str,
+    skills: List[str] | None = None,
+    location: str | None = None,
+    years: int | None = None,
+) -> int:
     old = await _resumes.find_one({"resume_id": resume_id})
     if not old:
         return 0
 
+    update_fields = {"name": name, "text": text}
+    if skills is not None:
+        update_fields["skills"] = skills
+    if location is not None:
+        update_fields["location"] = location
+    if years is not None:
+        update_fields["years"] = years
+
     res = await _resumes.update_one(
         {"resume_id": resume_id},
-        {"$set": {"name": name, "text": text}},
+        {"$set": update_fields},
     )
 
     if text.strip() != old.get("text", ""):
@@ -170,20 +185,42 @@ async def resumes_all():
     return await cursor.to_list(None)
 
 
-async def resumes_count() -> int:
+def _build_filter_query(filters: dict | None) -> dict:
+    query: dict = {}
+    if not filters:
+        return query
+    if skill := filters.get("skill"):
+        query["skills"] = skill
+    if loc := filters.get("location"):
+        query["location"] = loc
+    min_y = filters.get("min_years")
+    max_y = filters.get("max_years")
+    years = {}
+    if min_y is not None:
+        years["$gte"] = int(min_y)
+    if max_y is not None:
+        years["$lte"] = int(max_y)
+    if years:
+        query["years"] = years
+    return query
+
+
+async def resumes_count(filters: dict | None = None) -> int:
     """Return total number of résumé documents."""
     if await _guard("resumes_count"):
         return 0
-    return await resumes_collection.count_documents({})
+    query = _build_filter_query(filters)
+    return await resumes_collection.count_documents(query)
 
 
-async def resumes_page(page: int, per_page: int):
+async def resumes_page(page: int, per_page: int, filters: dict | None = None):
     """Return a single page of résumés sorted by _id descending."""
     if await _guard("resumes_page"):
         return []
     skip = max(0, (page - 1) * per_page)
+    query = _build_filter_query(filters)
     cursor = (
-        resumes_collection.find()
+        resumes_collection.find(query)
         .sort("_id", -1)
         .skip(skip)
         .limit(per_page)

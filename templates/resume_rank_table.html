@@ -1,12 +1,10 @@
-<html>
-<head></head>
-<body>
-  <table style="width:100%; border-collapse: collapse; margin: 15px 0;">
+<table style="width:100%; border-collapse: collapse; margin: 15px 0;">
     <thead>
       <tr>
         <th style="border:1px solid #ccc; padding:8px; text-align:left;">Candidate</th>
-        <th style="border:1px solid #ccc; padding:8px; text-align:left;">Why Fit?</th>
         <th style="border:1px solid #ccc; padding:8px; text-align:left;">Fit</th>
+        <th style="border:1px solid #ccc; padding:8px; text-align:left;">Req OK</th>
+        <th style="border:1px solid #ccc; padding:8px; text-align:left;">Why Fit?</th>
         <th style="border:1px solid #ccc; padding:8px; text-align:left;">Improve</th>
       </tr>
     </thead>
@@ -14,12 +12,11 @@
       {% for row in rows %}
       <tr>
         <td style="border:1px solid #ccc; padding:8px;">{{ row.name }}</td>
-        <td style="border:1px solid #ccc; padding:8px;">{{ row.why }}</td>
         <td style="border:1px solid #ccc; padding:8px;">{{ row.fit }}</td>
+        <td style="border:1px solid #ccc; padding:8px;">{{ row.req_ok }}</td>
+        <td style="border:1px solid #ccc; padding:8px;">{{ row.why }}</td>
         <td style="border:1px solid #ccc; padding:8px;">{{ row.improve }}</td>
       </tr>
       {% endfor %}
     </tbody>
-  </table>
-</body>
-</html>
+</table>
