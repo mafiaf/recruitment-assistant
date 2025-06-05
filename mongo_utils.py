@@ -144,6 +144,18 @@ async def update_resume(
         meta["tags"] = tags
     elif old.get("tags"):
         meta["tags"] = old.get("tags")
+    if skills is not None:
+        meta["skills"] = skills
+    elif old.get("skills"):
+        meta["skills"] = old.get("skills")
+    if location is not None:
+        meta["location"] = location
+    elif old.get("location"):
+        meta["location"] = old.get("location")
+    if years is not None:
+        meta["years"] = years
+    elif old.get("years") is not None:
+        meta["years"] = old.get("years")
 
     if text.strip() != old.get("text", ""):
         add_resume_to_pinecone(
