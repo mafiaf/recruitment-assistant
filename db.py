@@ -81,3 +81,17 @@ def resumes_by_ids(id_list: List[str]):
         )
         for doc in cur
     ]
+
+def add_project_history(user_id: str, project: Dict[str, Any]):
+    """Append a project entry and update last_project."""
+    if _guard("add_project_history"):
+        return
+    project.setdefault("ts", datetime.utcnow())
+    chats.update_one(
+        {"user_id": user_id},
+        {
+            "$push": {"projects": project},
+            "$set": {"last_project": project, "ts": datetime.utcnow()}
+        },
+        upsert=True,
+    )
