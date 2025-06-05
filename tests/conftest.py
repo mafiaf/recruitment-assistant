@@ -7,11 +7,11 @@ mods = {
     'numpy': {'array': lambda x: x},
     'openai': {},
     'pdfplumber': {},
-    'PyPDF2': {},
+    'PyPDF2': {'PdfReader': lambda *a, **k: types.SimpleNamespace(pages=[])},
     'docx': {'Document': lambda *a, **k: None},
-    'httpx': {},
     'dotenv': {'load_dotenv': lambda: None},
     'certifi': {'where': lambda: ''},
+    'itsdangerous': {'URLSafeTimedSerializer': lambda *a, **k: None, 'BadSignature': Exception},
 }
 for name, attrs in mods.items():
     if name not in sys.modules:
@@ -19,6 +19,91 @@ for name, attrs in mods.items():
         for k, v in attrs.items():
             setattr(mod, k, v)
         sys.modules[name] = mod
+
+# minimal httpx stub for Starlette's TestClient
+if 'httpx' not in sys.modules:
+    httpx = types.ModuleType('httpx')
+
+    class Request:
+        def __init__(self, method, url):
+            from urllib.parse import urlsplit
+            parts = urlsplit(url)
+            self.method = method
+            self.url = types.SimpleNamespace(
+                scheme=parts.scheme or 'http',
+                netloc=parts.netloc.encode(),
+                path=parts.path,
+                raw_path=parts.path.encode(),
+                query=parts.query.encode(),
+            )
+            self.headers = {}
+            self._content = b''
+
+        def read(self):
+            return self._content
+
+    class ByteStream:
+        def __init__(self, data):
+            self._data = data
+
+        def read(self):
+            return self._data
+
+    class Response:
+        def __init__(self, status_code=200, headers=None, stream=None, request=None):
+            self.status_code = status_code
+            self.headers = headers or []
+            self.request = request
+            data = stream.read() if hasattr(stream, 'read') else b''
+            self.text = data.decode()
+            self.content = data
+
+    class BaseTransport:
+        pass
+
+    class Client:
+        def __init__(self, *args, **kwargs):
+            self._transport = kwargs.get('transport')
+            self.base_url = kwargs.get('base_url', '')
+
+        def request(self, method, url, **kwargs):
+            req = Request(method, self.base_url + url)
+            return self._transport.handle_request(req)
+
+        def get(self, url, **kwargs):
+            return self.request('GET', url, **kwargs)
+
+        def post(self, url, **kwargs):
+            return self.request('POST', url, **kwargs)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            pass
+
+    httpx.Request = Request
+    httpx.Response = Response
+    httpx.ByteStream = ByteStream
+    httpx.Client = Client
+    httpx.BaseTransport = BaseTransport
+    httpx._client = types.SimpleNamespace(
+        USE_CLIENT_DEFAULT=object(),
+        CookieTypes=object,
+        UseClientDefault=object,
+        TimeoutTypes=object,
+    )
+    httpx._types = types.SimpleNamespace(
+        URLTypes=object,
+        HeaderTypes=object,
+        QueryParamTypes=object,
+        CookieTypes=object,
+        RequestContent=object,
+        RequestFiles=object,
+        AuthTypes=object,
+    )
+
+    sys.modules['httpx'] = httpx
 
 # stub passlib with minimal CryptContext
 passlib_context = types.ModuleType('passlib.context')
@@ -50,6 +135,9 @@ stub_mongo_utils = types.ModuleType('mongo_utils')
 stub_mongo_utils.update_resume = lambda *a, **kw: None
 stub_mongo_utils.delete_resume_by_id = lambda *a, **kw: None
 stub_mongo_utils.db = {}
+stub_mongo_utils._users = {}
+stub_mongo_utils.ENV = 'test'
+stub_mongo_utils._guard = lambda op: False
 sys.modules['mongo_utils'] = stub_mongo_utils
 
 stub_pinecone_utils = types.ModuleType('pinecone_utils')
