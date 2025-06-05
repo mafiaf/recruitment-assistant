@@ -3,13 +3,20 @@
 {% set page_title = "Projects" %}
 
 {% block body %}
-<div class="space-y-6">
+<div class="space-y-4">
   {% if projects %}
     {% for p in projects %}
-      <section class="bg-white/70 backdrop-blur p-4 rounded shadow">
-        <div class="mb-2 text-sm whitespace-pre-wrap">{{ p.description }}</div>
+      <details class="bg-white/70 backdrop-blur p-4 rounded shadow">
+        <summary class="cursor-pointer">
+          {{ p.description|truncate(80, True, '…') }}
+        </summary>
+        <div class="mt-2 text-sm whitespace-pre-wrap">{{ p.description }}</div>
         <div class="overflow-auto">{{ p.table_html | safe }}</div>
-      </section>
+        <form action="/delete_project" method="post" class="mt-2">
+          <input type="hidden" name="ts" value="{{ p.ts.isoformat() }}">
+          <button type="submit" class="text-red-600 text-sm hover:underline" onclick="return confirm('Delete project?')">delete</button>
+        </form>
+      </details>
     {% endfor %}
   {% else %}
     <p>No past projects found.</p>

@@ -191,3 +191,18 @@ def add_project_history(user_id: str, project: dict):
         {"$push": {"projects": project}, "$set": {"last_project": project, "ts": datetime.utcnow()}},
         upsert=True,
     )
+
+
+def delete_project(user_id: str, ts_iso: str) -> int:
+    """Delete a project by timestamp for the given user."""
+    if _guard("delete_project"):
+        return 0
+    try:
+        ts = datetime.fromisoformat(ts_iso)
+    except ValueError:
+        return 0
+    res = chats.update_one(
+        {"user_id": user_id},
+        {"$pull": {"projects": {"ts": ts}}},
+    )
+    return res.modified_count
