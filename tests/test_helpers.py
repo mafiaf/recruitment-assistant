@@ -64,6 +64,7 @@ def test_extract_years_requirement():
     assert main.extract_years_requirement("no numbers") is None
 
 
+
 @pytest.mark.asyncio
 async def test_match_project_years_column(monkeypatch):
     table = (
@@ -111,3 +112,4 @@ async def test_match_project_years_column(monkeypatch):
         description="need 3 years", file=None, candidate_ids=None
     )
     assert "2/3" in resp.body.decode()
+

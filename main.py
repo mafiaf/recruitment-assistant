@@ -565,6 +565,7 @@ async def match_project(
         tags_str = ", ".join(m.metadata.get('tags', []))
         tag_part = f" [tags: {tags_str}]" if tags_str else ""
         years = m.metadata.get('years')
+
         if expected_years and years is not None:
             years_part = f" ({years}/{expected_years} yrs)"
             years_info.append(f"{years}/{expected_years}")
@@ -574,6 +575,7 @@ async def match_project(
         else:
             years_part = ""
             years_info.append("—" if expected_years else "—")
+
         snippet = (
             f"- **{m.metadata['name']}**{years_part}{tag_part}: "
             f"{m.metadata['text'].replace(chr(10),' ')[:300]}…"
