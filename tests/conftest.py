@@ -11,6 +11,18 @@ mods = {
     'docx': {'Document': lambda *a, **k: None},
     'dotenv': {'load_dotenv': lambda: None},
     'certifi': {'where': lambda: ''},
+    'jinja2': {
+        'Environment': type('Env', (), {'__init__': lambda self, **kw: None, 'globals': {}, 'get_template': lambda self, name: types.SimpleNamespace(render=lambda ctx: '')}),
+        'FileSystemLoader': lambda *a, **k: None,
+        'select_autoescape': lambda *a, **k: None,
+        'Template': types.SimpleNamespace,
+        'pass_context': lambda f: f,
+        'contextfunction': lambda f: f,
+    },
+    'multipart': {
+        '__version__': '0',
+        'multipart': types.ModuleType('multipart.multipart')
+    },
     'itsdangerous': {'URLSafeTimedSerializer': lambda *a, **k: None, 'BadSignature': Exception},
 }
 for name, attrs in mods.items():
@@ -19,6 +31,9 @@ for name, attrs in mods.items():
         for k, v in attrs.items():
             setattr(mod, k, v)
         sys.modules[name] = mod
+        if name == 'multipart':
+            sys.modules['multipart.multipart'] = attrs['multipart']
+            attrs['multipart'].parse_options_header = lambda x: ('', {})
 
 # minimal httpx stub for Starlette's TestClient
 if 'httpx' not in sys.modules:
@@ -129,12 +144,13 @@ stub_db.chat_upsert = lambda *a, **kw: None
 stub_db.resumes_all = lambda: []
 stub_db.resumes_by_ids = lambda ids: []
 stub_db.resumes_collection = None
+stub_db.add_project_history = lambda *a, **kw: None
 sys.modules['db'] = stub_db
 
 stub_mongo_utils = types.ModuleType('mongo_utils')
 stub_mongo_utils.update_resume = lambda *a, **kw: None
 stub_mongo_utils.delete_resume_by_id = lambda *a, **kw: None
-stub_mongo_utils.db = {}
+stub_mongo_utils.db = {"users": {}}
 stub_mongo_utils._users = {}
 stub_mongo_utils.ENV = 'test'
 stub_mongo_utils._guard = lambda op: False
