@@ -42,6 +42,8 @@ else:  # development – local Mongo, no TLS
 db       = client[DB_NAME]
 _resumes = db["resumes"]
 _users   = db["users"]
+resumes_collection = _resumes  # backward compatibility for main.py
+chats = db["chats"]
 
 print(f"🟢 mongo_utils ready – env:{ENV} DB:{DB_NAME} collection:{_resumes.name}")
 
@@ -139,3 +141,53 @@ def delete_resume_by_id(resume_id: str) -> int:
         return 0
     res = _resumes.delete_one({"resume_id": resume_id.strip()})
     return res.deleted_count
+
+# ------------------------------------------------------------------ #
+# 3) chat and project helpers (migrated from db.py)                   #
+# ------------------------------------------------------------------ #
+
+def chat_find_one(query: dict):
+    if _guard("chat_find_one"):
+        return None
+    return chats.find_one(query)
+
+
+def chat_upsert(user_id: str, messages: List[dict]):
+    if _guard("chat_upsert"):
+        return
+    chats.update_one(
+        {"user_id": user_id},
+        {"$set": {"messages": messages, "ts": datetime.utcnow()}},
+        upsert=True,
+    )
+
+
+def resumes_all():
+    if _guard("resumes_all"):
+        return []
+    return list(resumes_collection.find())
+
+
+def resumes_by_ids(id_list: List[str]):
+    if _guard("resumes_by_ids"):
+        return []
+    cur = resumes_collection.find({"_id": {"$in": [ObjectId(i) for i in id_list]}})
+    return [
+        SimpleNamespace(
+            id=doc["resume_id"],
+            metadata={"name": doc["name"], "text": doc["text"]},
+        )
+        for doc in cur
+    ]
+
+
+def add_project_history(user_id: str, project: dict):
+    """Append a project entry and update last_project."""
+    if _guard("add_project_history"):
+        return
+    project.setdefault("ts", datetime.utcnow())
+    chats.update_one(
+        {"user_id": user_id},
+        {"$push": {"projects": project}, "$set": {"last_project": project, "ts": datetime.utcnow()}},
+        upsert=True,
+    )
