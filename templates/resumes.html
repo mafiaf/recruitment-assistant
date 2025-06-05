@@ -15,7 +15,7 @@
     <thead>
       <tr class="bg-gray-100 text-left">
         <th class="px-4 py-2">Name</th>
-        <th class="px-2 py-2">Length</th>
+        <th class="px-2 py-2">Added</th>
         <th class="px-2 py-2">Actions</th>
       </tr>
     </thead>
@@ -23,7 +23,7 @@
       {% for r in resumes %}
       <tr class="odd:bg-white even:bg-gray-50">
         <td class="px-4 py-2">{{ r.name }}</td>
-        <td class="px-2 py-2">{{ r.text|length }} chars</td>
+        <td class="px-2 py-2">{{ r.added|default('—') }}</td>
         <td class="px-2 py-2 space-x-3 text-sm">
 
         <!-- preview → uses <details>   (no form, just HTML) -->
