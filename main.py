@@ -293,6 +293,7 @@ async def upload_resume(
     skills: str | None = Form(None),
     location: str | None = Form(None),
     years: int | None = Form(None),
+    tags: str | None = Form(None),
     resume: ResumeUpload | None = Body(None),
     user=Depends(require_login),
 ):
@@ -307,11 +308,19 @@ async def upload_resume(
             return [s.strip() for s in val if s.strip()]
         return [s.strip() for s in str(val).split(',') if s.strip()]
 
+    def parse_tags(val):
+        if not val:
+            return []
+        if isinstance(val, list):
+            return [t.strip() for t in val if t.strip()]
+        return [t.strip() for t in str(val).split(',') if t.strip()]
+
     # ── JSON payload -------------------------------------------------------
     if resume is not None:
         name = resume.name or name or ""
         text = (resume.text or text or "").strip()
         skill_list = parse_skills(resume.skills)
+        tag_list = parse_tags(resume.tags)
         loc_val = resume.location or location or ""
         years_val = resume.years if resume.years is not None else years
 
@@ -325,8 +334,10 @@ async def upload_resume(
 
         display_name = guess_name(name, "", text)
         resume_id = slugify(display_name)
-        add_resume_to_pinecone(text, resume_id, {"name": display_name, "text": text}, "resumes")
+        add_resume_to_pinecone(text, resume_id, {"name": display_name, "text": text, "tags": tag_list}, "resumes")
         doc = {"resume_id": resume_id, "name": display_name, "text": text}
+        if tag_list:
+            doc["tags"] = tag_list
         if skill_list:
             doc["skills"] = skill_list
         if loc_val:
@@ -348,6 +359,7 @@ async def upload_resume(
             files = [file]
 
         skill_list = parse_skills(skills)
+        tag_list = parse_tags(tags)
         loc_val = location or ""
         years_val = years
 
@@ -355,8 +367,10 @@ async def upload_resume(
             # fallback: text field without file
             display_name = guess_name(name or "", "", text)
             resume_id = slugify(display_name)
-            add_resume_to_pinecone(text, resume_id, {"name": display_name, "text": text}, "resumes")
+            add_resume_to_pinecone(text, resume_id, {"name": display_name, "text": text, "tags": tag_list}, "resumes")
             doc = {"resume_id": resume_id, "name": display_name, "text": text}
+            if tag_list:
+                doc["tags"] = tag_list
             if skill_list:
                 doc["skills"] = skill_list
             if loc_val:
@@ -382,8 +396,10 @@ async def upload_resume(
                 continue
             display_name = guess_name(name or "", filename, file_text)
             resume_id = slugify(display_name)
-            add_resume_to_pinecone(file_text, resume_id, {"name": display_name, "text": file_text}, "resumes")
+            add_resume_to_pinecone(file_text, resume_id, {"name": display_name, "text": file_text, "tags": tag_list}, "resumes")
             doc = {"resume_id": resume_id, "name": display_name, "text": file_text}
+            if tag_list:
+                doc["tags"] = tag_list
             if skill_list:
                 doc["skills"] = skill_list
             if loc_val:
@@ -504,10 +520,12 @@ async def match_project(
         )
 
     # 4️⃣ build GPT prompt ----------------------------------------------------
-    snippets = [
-        f"- **{m.metadata['name']}**: {m.metadata['text'].replace(chr(10),' ')[:300]}…"
-        for m in matches
-    ]
+    snippets = []
+    for m in matches:
+        tags_str = ", ".join(m.metadata.get('tags', []))
+        tag_part = f" [tags: {tags_str}]" if tags_str else ""
+        snippet = f"- **{m.metadata['name']}**{tag_part}: {m.metadata['text'].replace(chr(10),' ')[:300]}…"
+        snippets.append(snippet)
     candidates_block = "\n".join(snippets)
 
     header = (
@@ -829,13 +847,16 @@ async def update_resume_route(
         text: str      = Form(...),
         skills: str    = Form(""),
         location: str  = Form(""),
-        years: int | None = Form(None)):
+        years: int | None = Form(None),
+        tags: str = Form("")):
     skill_list = [s.strip() for s in skills.split(',') if s.strip()]
+    tag_list = [t.strip() for t in tags.split(',') if t.strip()]
     loc_val = location or None
     modified = await update_resume(resume_id, name, text,
                                    skill_list if skills else None,
                                    loc_val,
-                                   years)
+                                   years,
+                                   tag_list if tags else None)
     if not modified:
         logger.warning("Nothing updated for resume_id %s", resume_id)
     return RedirectResponse("/resumes", status_code=303)

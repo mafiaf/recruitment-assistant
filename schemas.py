@@ -7,6 +7,7 @@ class ResumeUpload(BaseModel):
     skills: Optional[List[str]] = None
     location: Optional[str] = None
     years: Optional[int] = None
+    tags: Optional[List[str]] = None
 
 class ChatRequest(BaseModel):
     text: str
