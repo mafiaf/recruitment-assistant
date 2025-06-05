@@ -4,7 +4,7 @@ from pinecone import Pinecone, ServerlessSpec
 import openai
 
 env_file = ".env.production" if os.getenv("ENV", "development").lower() == "production" else ".env.development"
-load_dotenv()
+load_dotenv(env_file)
 
 ENV = os.getenv("ENV", "development").lower()
 
