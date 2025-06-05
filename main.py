@@ -17,7 +17,7 @@ from docx import Document
 from dotenv import load_dotenv
 from fastapi import Body, FastAPI, File, Form, Request, UploadFile, Depends, HTTPException, status, Cookie
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, PlainTextResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from itsdangerous import URLSafeTimedSerializer, BadSignature
@@ -61,6 +61,11 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse("static/favicon.svg")
 
 
 # ═════════════════════════════════════════════════════════════════════════════
