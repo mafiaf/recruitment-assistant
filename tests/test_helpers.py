@@ -50,3 +50,9 @@ async def test_match_project_logic_error(monkeypatch):
     monkeypatch.setattr(main, "embed_text", lambda text: None)
     result = await main.match_project_logic("desc")
     assert "embed project description" in result
+
+
+def test_extract_years_requirement():
+    assert main.extract_years_requirement("need 5 years of experience") == 5
+    assert main.extract_years_requirement("minimum 3 years experience") == 3
+    assert main.extract_years_requirement("no numbers") is None
