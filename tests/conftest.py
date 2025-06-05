@@ -12,6 +12,8 @@ mods = {
     'dotenv': {'load_dotenv': lambda: None},
     'certifi': {'where': lambda: ''},
     'itsdangerous': {'URLSafeTimedSerializer': lambda *a, **k: None, 'BadSignature': Exception},
+    'jinja2': {},
+    'multipart': {'__version__': '0'},
 }
 for name, attrs in mods.items():
     if name not in sys.modules:
@@ -20,12 +22,19 @@ for name, attrs in mods.items():
             setattr(mod, k, v)
         sys.modules[name] = mod
 
+if 'multipart.multipart' not in sys.modules:
+    sub = types.ModuleType('multipart.multipart')
+    sub.parse_options_header = lambda *a, **k: ('', '')
+    sys.modules['multipart.multipart'] = sub
+    if 'multipart' in sys.modules:
+        sys.modules['multipart'].multipart = sub
+
 # minimal httpx stub for Starlette's TestClient
 if 'httpx' not in sys.modules:
     httpx = types.ModuleType('httpx')
 
     class Request:
-        def __init__(self, method, url):
+        def __init__(self, method, url, data=None):
             from urllib.parse import urlsplit
             parts = urlsplit(url)
             self.method = method
@@ -36,8 +45,16 @@ if 'httpx' not in sys.modules:
                 raw_path=parts.path.encode(),
                 query=parts.query.encode(),
             )
+            from urllib.parse import urlencode
             self.headers = {}
-            self._content = b''
+            if isinstance(data, bytes):
+                self._content = data
+            elif isinstance(data, str):
+                self._content = data.encode()
+            elif data is not None:
+                self._content = urlencode(data, doseq=True).encode()
+            else:
+                self._content = b''
 
         def read(self):
             return self._content
@@ -61,14 +78,26 @@ if 'httpx' not in sys.modules:
     class BaseTransport:
         pass
 
+    class _URL(str):
+        def join(self, url: str):
+            if url.startswith('http'):
+                return url
+            if not url.startswith('/'):
+                url = '/' + url
+            return self.rstrip('/') + url
+
     class Client:
         def __init__(self, *args, **kwargs):
             self._transport = kwargs.get('transport')
-            self.base_url = kwargs.get('base_url', '')
+            self.base_url = _URL(kwargs.get('base_url', ''))
 
         def request(self, method, url, **kwargs):
-            req = Request(method, self.base_url + url)
-            return self._transport.handle_request(req)
+            data = kwargs.get('data')
+            req = Request(method, url, data=data)
+            if data is not None:
+                req.headers['content-type'] = 'application/x-www-form-urlencoded'
+            resp = self._transport.handle_request(req)
+            return resp
 
         def get(self, url, **kwargs):
             return self.request('GET', url, **kwargs)
@@ -105,6 +134,49 @@ if 'httpx' not in sys.modules:
 
     sys.modules['httpx'] = httpx
 
+if 'starlette.templating' not in sys.modules:
+    st_templates = types.ModuleType('starlette.templating')
+
+    class DummyTemplates:
+        def __init__(self, *a, **kw):
+            pass
+
+        def TemplateResponse(self, name, context, status_code=200, **kw):
+            from starlette.responses import HTMLResponse
+            return HTMLResponse("", status_code=status_code)
+
+        def get_template(self, name):
+            return types.SimpleNamespace(render=lambda **kw: "")
+
+    st_templates.Jinja2Templates = DummyTemplates
+    sys.modules['starlette.templating'] = st_templates
+    fastapi_templating = types.ModuleType('fastapi.templating')
+    fastapi_templating.Jinja2Templates = DummyTemplates
+    sys.modules['fastapi.templating'] = fastapi_templating
+
+
+# simple form parser replacement to avoid python-multipart dependency
+import starlette.formparsers as fp
+from urllib.parse import parse_qs
+from starlette.datastructures import FormData
+
+class SimpleFormParser:
+    def __init__(self, headers, stream):
+        self.headers = headers
+        self.stream = stream
+
+    async def parse(self):
+        body = b''
+        async for chunk in self.stream:
+            body += chunk
+        data = {
+            k: v[0] if len(v) == 1 else v
+            for k, v in parse_qs(body.decode()).items()
+        }
+        return FormData(data)
+
+fp.FormParser = SimpleFormParser
+
 # stub passlib with minimal CryptContext
 passlib_context = types.ModuleType('passlib.context')
 passlib_context.CryptContext = lambda **kw: types.SimpleNamespace(hash=lambda p: p, verify=lambda p, h: p == h)
@@ -129,12 +201,13 @@ stub_db.chat_upsert = lambda *a, **kw: None
 stub_db.resumes_all = lambda: []
 stub_db.resumes_by_ids = lambda ids: []
 stub_db.resumes_collection = None
+stub_db.add_project_history = lambda *a, **kw: None
 sys.modules['db'] = stub_db
 
 stub_mongo_utils = types.ModuleType('mongo_utils')
 stub_mongo_utils.update_resume = lambda *a, **kw: None
 stub_mongo_utils.delete_resume_by_id = lambda *a, **kw: None
-stub_mongo_utils.db = {}
+stub_mongo_utils.db = {"users": {}}
 stub_mongo_utils._users = {}
 stub_mongo_utils.ENV = 'test'
 stub_mongo_utils._guard = lambda op: False
@@ -146,3 +219,13 @@ stub_pinecone_utils.embed_text = lambda *a, **kw: []
 stub_pinecone_utils.index = None
 stub_pinecone_utils.search_best_resumes = lambda *a, **kw: []
 sys.modules['pinecone_utils'] = stub_pinecone_utils
+
+# load main module manually so tests can import it without relying on sys.path
+import importlib.util, pathlib
+root_dir = pathlib.Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(root_dir))
+main_path = root_dir / "main.py"
+spec = importlib.util.spec_from_file_location("main", main_path)
+main = importlib.util.module_from_spec(spec)
+sys.modules['main'] = main
+spec.loader.exec_module(main)

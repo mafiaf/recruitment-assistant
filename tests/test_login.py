@@ -1,30 +1,33 @@
-from fastapi.testclient import TestClient
+import asyncio
 import types
-import main
 import pytest
+from starlette.requests import Request
+import main
 
 # disable startup DB seed
 if main.seed_owner in main.app.router.on_startup:
     main.app.router.on_startup.remove(main.seed_owner)
 
 @pytest.fixture
-def client(monkeypatch):
-    def fake_verify(username: str, password: str):
+def fake_verify(monkeypatch):
+    def fake(username: str, password: str):
         if username == "user" and password == "pass":
             return {"username": username, "role": "user"}
         return None
-    monkeypatch.setattr(main, "verify_password", fake_verify)
-    with TestClient(main.app) as c:
-        yield c
+    monkeypatch.setattr(main, "verify_password", fake)
+    main.signer = types.SimpleNamespace(dumps=lambda obj: "tok")
 
-def test_login_page(client):
-    resp = client.get("/login")
+def make_request() -> Request:
+    return Request({"type": "http", "headers": []})
+
+def test_login_page(fake_verify):
+    resp = main.login_form(make_request())
     assert resp.status_code == 200
 
-def test_login_success(client):
-    resp = client.post("/login", data={"username": "user", "password": "pass"}, allow_redirects=False)
+def test_login_success(fake_verify):
+    resp = asyncio.run(main.login_post(make_request(), username="user", password="pass"))
     assert resp.status_code == 303
 
-def test_login_failure(client):
-    resp = client.post("/login", data={"username": "bad", "password": "wrong"})
+def test_login_failure(fake_verify):
+    resp = asyncio.run(main.login_post(make_request(), username="bad", password="wrong"))
     assert resp.status_code == 401
