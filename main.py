@@ -40,6 +40,7 @@ from mongo_utils import (
     resumes_by_ids,
     resumes_collection,
     add_project_history,
+    delete_project,
 )
 from pymongo import errors
 from pinecone_utils import (
@@ -783,6 +784,20 @@ def project_history(request: Request, user=Depends(require_login)):
         page_title="Projects",
         active="/projects",
     )
+
+
+@app.post("/delete_project")
+def delete_project_route(request: Request,
+                         ts: str = Form(...),
+                         user=Depends(require_login)):
+    session_user = get_current_user(request.cookies.get(COOKIE_NAME))
+    user_id = session_user["username"] if session_user else "anon"
+    deleted = delete_project(user_id, ts)
+    if deleted == 0:
+        print(f"🛑 No project found with ts {ts}")
+    else:
+        print(f"🟢 Deleted project with ts {ts}")
+    return RedirectResponse("/projects", status_code=303)
 
 @app.get("/view_resumes", response_class=HTMLResponse)
 async def view_resumes(request: Request, user=Depends(require_login)):

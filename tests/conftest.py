@@ -347,6 +347,7 @@ stub_mongo_utils.resumes_all = lambda: []
 stub_mongo_utils.resumes_by_ids = lambda ids: []
 stub_mongo_utils.resumes_collection = None
 stub_mongo_utils.add_project_history = lambda *a, **kw: None
+stub_mongo_utils.delete_project = lambda *a, **kw: 1
 
 class DummyColl:
     def __getattr__(self, name):
