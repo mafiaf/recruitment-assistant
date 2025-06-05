@@ -1,6 +1,9 @@
-from functools import lru_cache
 import os
-from pydantic import BaseSettings
+from functools import lru_cache
+
+from pydantic.v1 import BaseSettings
+
+
 
 class Settings(BaseSettings):
     ENV: str = "development"
@@ -15,11 +18,9 @@ class Settings(BaseSettings):
     OWNER_PASS: str = "changeme!"
 
     class Config:
-        env_file = (
-            ".env.production"
-            if os.getenv("ENV", "development").lower() == "production"
-            else ".env.development"
-        )
+
+        env_file = ".env.production" if os.getenv("ENV", "development").lower() == "production" else ".env.development"
+
         case_sensitive = False
 
     @property
