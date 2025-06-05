@@ -4,6 +4,7 @@ from functools import lru_cache
 from pydantic.v1 import BaseSettings
 
 
+
 class Settings(BaseSettings):
     ENV: str = "development"
     MONGO_URI: str = "mongodb://localhost:27017"
@@ -17,7 +18,9 @@ class Settings(BaseSettings):
     OWNER_PASS: str = "changeme!"
 
     class Config:
+
         env_file = ".env.production" if os.getenv("ENV", "development").lower() == "production" else ".env.development"
+
         case_sensitive = False
 
     @property
@@ -34,6 +37,5 @@ class Settings(BaseSettings):
 @lru_cache()
 def get_settings() -> Settings:
     return Settings()
-
 
 settings = get_settings()
