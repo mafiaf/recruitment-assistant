@@ -106,7 +106,7 @@ dropZone.addEventListener('drop', e=>{
 /* core upload logic */
 async function uploadFiles(files){
   const fd = new FormData();
-  for(const file of files) fd.append('files', file);
+  for(const file of files) fd.append('file', file);
   /* you could collect additional fields here (e.g. name) */
 
   try{
