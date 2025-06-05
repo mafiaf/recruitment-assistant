@@ -1,7 +1,7 @@
 from PyPDF2 import PdfReader
 from docx import Document
-from html import escape
-import re
+import markdown
+import bleach
 
 def extract_text_from_pdf(file):
     reader = PdfReader(file)
@@ -13,9 +13,18 @@ def extract_text_from_docx(file):
 
 
 def sanitize_markdown(md: str) -> str:
-    """Convert a small subset of Markdown to safe HTML."""
-    text = escape(md)
-    text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
-    text = re.sub(r"\*(.+?)\*", r"<em>\1</em>", text)
-    text = text.replace("\n", "<br>")
-    return text
+    """Render markdown and sanitize the resulting HTML."""
+    html = markdown.markdown(md, extensions=["nl2br"])  # preserve single newlines
+    allowed_tags = [
+        "p",
+        "br",
+        "strong",
+        "em",
+        "ul",
+        "ol",
+        "li",
+        "pre",
+        "code",
+        "blockquote",
+    ]
+    return bleach.clean(html, tags=allowed_tags, strip=True)
