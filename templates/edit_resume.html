@@ -1,46 +1,35 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Edit résumé – {{ resume.name }}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap">
-  <link rel="stylesheet" href="/static/styles.css">
-</head>
-<body class="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 flex flex-col font-sans">
-  <header class="px-6 py-4 bg-gradient-to-r from-blue-900 to-blue-700 text-white shadow flex justify-between items-center">
-    <h1 class="font-semibold text-xl">Edit résumé</h1>
-    <nav class="space-x-6 text-sm">
-      <a href="/" class="text-blue-200 hover:text-white">Home</a>
-      <a href="/resumes" class="text-blue-200 hover:text-white">All résumés</a>
-      <a href="/chat" class="text-blue-200 hover:text-white">Chat</a>
-    </nav>
-  </header>
+{% extends "_base.html" %}
+{% set page_title = "Edit résumé" %}
+{% set active = "/resumes" %}
 
-  <main class="flex-1 p-6 m-6 bg-white/70 backdrop-blur rounded-xl shadow">
-    <form action="/update_resume" method="post" class="max-w-4xl space-y-6">
-      <input type="hidden" name="resume_id" value="{{ resume.resume_id }}">
-      
-      <div>
-        <label class="block font-medium mb-1">Name</label>
-        <input name="name"
-               value="{{ resume.name }}"
-               class="w-full border rounded px-3 py-2"
-               required>
-      </div>
+{% block body %}
+<div class="max-w-4xl mx-auto bg-white/70 backdrop-blur p-6 rounded-xl shadow">
+  <div class="flex items-center mb-6">
+    <a href="/resumes" class="mr-4 text-2xl text-gray-600 hover:text-gray-900">&larr;</a>
+    <h2 class="text-2xl font-semibold">Edit résumé</h2>
+  </div>
+  <form action="/update_resume" method="post" class="space-y-6">
+    <input type="hidden" name="resume_id" value="{{ resume.resume_id }}">
 
-      <div>
-        <label class="block font-medium mb-1">Text</label>
-        <textarea name="text"
-                  rows="18"
-                  class="w-full border rounded px-3 py-2 font-mono"
-                  required>{{ resume.text }}</textarea>
-      </div>
+    <div>
+      <label class="block font-medium mb-1">Name</label>
+      <input name="name"
+             value="{{ resume.name }}"
+             class="w-full border rounded px-3 py-2"
+             required>
+    </div>
 
-      <button class="px-6 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">
-        Save changes
-      </button>
-    </form>
-  </main>
-</body>
-</html>
+    <div>
+      <label class="block font-medium mb-1">Text</label>
+      <textarea name="text"
+                rows="18"
+                class="w-full border rounded px-3 py-2 font-mono"
+                required>{{ resume.text }}</textarea>
+    </div>
+
+    <button class="px-6 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">
+      Save changes
+    </button>
+</form>
+</div>
+{% endblock %}
