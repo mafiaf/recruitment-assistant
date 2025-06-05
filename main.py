@@ -511,11 +511,11 @@ async def match_project(
     candidates_block = "\n".join(snippets)
 
     header = (
-        "| Candidate | Fit % | Why Fit? (≤90 w.) | Improve (≤45 w.) |\n"
-        "|:--|:--:|:--|:--|\n"          # ← keep this on the *same* assignment
+        "| Candidate | Fit % | Req OK | Why Fit? (≤90 w.) | Improve (≤45 w.) |\n"
+        "|:--|:--:|:--:|:--|:--|\n"  # keep this on the same assignment
     )
     rows_md = "\n".join(
-        f"| {m.metadata['name']} | {m.sim_pct} | | |" for m in matches
+        f"| {m.metadata['name']} | {m.sim_pct} | | | |" for m in matches
     )
 
     rubric = (
@@ -526,6 +526,8 @@ async def match_project(
         "* below 40 % = weak match\n\n"
         "The **Fit %** column already contains a cosine baseline. "
         "You may adjust it **±15 points max** if the résumé clearly warrants.  \n"
+        "For **Req OK**, check whether the résumé explicitly meets all years-of-"
+        "experience requirements in the project description. Use 'yes' or 'no'.\n"
         "**For “Improve”** give **one concrete, resume-focused action**: "
         "what to **add**, **reword**, **reorder** or **strengthen** in their résumé "
         "(new bullet, certification, project, keywords) to boost their fit."
@@ -537,8 +539,11 @@ async def match_project(
         "Candidate snippets:\n"
         f"{candidates_block}\n\n"
         f"{rubric}\n\n"
-        "Fill ONLY the blank cells in this Markdown table. "
-        "Maintain exactly these 4 columns; no extra rows or commentary.\n\n"
+        "Identify any required years of experience from the project description. "
+        "Compare each candidate snippet and mark 'Req OK' as 'yes' only if all "
+        "requirements are clearly satisfied. Fill ONLY the blank cells in this "
+        "Markdown table. Maintain exactly these 5 columns; no extra rows or "
+        "commentary.\n\n"
         f"{header}{rows_md}"
     )
 
@@ -566,13 +571,16 @@ async def match_project(
             continue
 
         cells = [c.strip() for c in ln.split("|")[1:-1]]
-        if len(cells) >= 4:
-            name, fit, why, improve = cells[:4]
+        if len(cells) >= 5:
+            name, fit, req_ok, why, improve = cells[:5]
             rows.append(
-                {"name": name,
-                "fit":  fit.rstrip("%"),
-                "why":  why,
-                "improve": improve}
+                {
+                    "name": name,
+                    "fit": fit.rstrip("%"),
+                    "req_ok": req_ok.lower(),
+                    "why": why,
+                    "improve": improve,
+                }
             )
 
     # fallback – if parsing still fails just show raw markdown
