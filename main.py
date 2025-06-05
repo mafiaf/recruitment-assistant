@@ -558,6 +558,8 @@ async def match_project(
     file: UploadFile = File(None),
     candidate_ids: Optional[List[str]] = Form(None),
 ):
+    session_user = get_current_user(request.cookies.get(COOKIE_NAME))
+    user_id = session_user["username"] if session_user else "anon"
     # 1️⃣ extract text --------------------------------------------------------
     if file and file.filename:
         data = await file.read()
