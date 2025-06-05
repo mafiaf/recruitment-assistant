@@ -418,11 +418,29 @@ def slugify(val: str) -> str:
 @app.post("/upload_resume", response_class=HTMLResponse)
 async def upload_resume(
     request: Request,
-    resume: ResumeUpload = Body(...),
+    resume: ResumeUpload | None = Body(None),
     user=Depends(require_login),
 ):
-    name = resume.name or ""
-    text = resume.text or ""
+    """Handle résumé uploads from JSON or multipart forms."""
+    name = ""
+    text = ""
+    filename = ""
+
+    # ── JSON payload -------------------------------------------------------
+    if resume is not None:
+        name = resume.name or ""
+        text = resume.text or ""
+    else:
+        # ── multipart/form-data -------------------------------------------
+        form = await request.form()
+        upload = form.get("files")
+        name = (form.get("name") or "").strip()
+        text = (form.get("text") or "").strip()
+        if upload and getattr(upload, "filename", None):
+            filename = upload.filename
+            data = await upload.read()
+            text = extract_text(data, filename)
+
     if not text.strip():
         return render(
             request,
@@ -431,7 +449,7 @@ async def upload_resume(
             page_title="Home",
         )
 
-    display_name = guess_name(name, "", text)
+    display_name = guess_name(name, filename, text)
     resume_id = slugify(display_name)
     add_resume_to_pinecone(
         text,
