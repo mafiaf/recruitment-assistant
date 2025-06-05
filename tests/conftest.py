@@ -1,7 +1,7 @@
 import sys
 import types
 
-# stub heavy external modules so main can be imported without full dependencies
+# ── heavyweight deps we want to stub ──────────────────────────────────────────
 mods = {
     'mammoth': {},
     'numpy': {'array': lambda x: x},
@@ -11,16 +11,15 @@ mods = {
     'docx': {'Document': lambda *a, **k: None},
     'dotenv': {'load_dotenv': lambda: None},
     'certifi': {'where': lambda: ''},
-    # ── itsdangerous ────────────────────────────────────────────────────────────
+    # itsdangerous minimal signer
     'itsdangerous': {
-        # serializer returns a fixed token string and loads to an empty dict
         'URLSafeTimedSerializer': lambda *a, **k: types.SimpleNamespace(
             dumps=lambda obj: 'token',
-            loads=lambda t: {}
+            loads=lambda t: {},
         ),
         'BadSignature': Exception,
     },
-    # ── jinja2 ─────────────────────────────────────────────────────────────────
+    # jinja2 stub sufficient for Starlette / FastAPI
     'jinja2': {
         'Environment': type(
             'Env',
@@ -39,7 +38,7 @@ mods = {
         'pass_context': lambda f: f,
         'contextfunction': lambda f: f,
     },
-    # ── multipart ──────────────────────────────────────────────────────────────
+    # top-level multipart package with placeholder submodule
     'multipart': {
         '__version__': '0',
         'multipart': types.ModuleType('multipart.multipart'),
@@ -53,19 +52,86 @@ for name, attrs in mods.items():
             setattr(mod, k, v)
         sys.modules[name] = mod
         if name == 'multipart':
-            # ensure multipart.multipart exists and works
             sys.modules['multipart.multipart'] = attrs['multipart']
-            attrs['multipart'].parse_options_header = lambda x: ('', {})
 
-# fallback in case the multipart submodule was not added above
+# ── enrich multipart for form / file handling ────────────────────────────────
+from urllib.parse import parse_qs
+
+if 'multipart' in sys.modules:
+    def parse_options_header(value):
+        if not value:
+            return b'', {}
+        main, *params = value.split(';')
+        parsed = {}
+        for p in params:
+            if '=' in p:
+                k, v = p.strip().split('=', 1)
+                parsed[k.encode()] = v.strip('"')
+        return main.strip().encode(), parsed
+
+    class QuerystringParser:
+        def __init__(self, callbacks):
+            self.callbacks = callbacks
+            self.buf = b''
+
+        def write(self, data):
+            self.buf += data
+
+        def finalize(self):
+            pairs = self.buf.split(b'&') if self.buf else []
+            for p in pairs:
+                if not p:
+                    continue
+                name, _, value = p.partition(b'=')
+                self.callbacks['on_field_start']()
+                self.callbacks['on_field_name'](name, 0, len(name))
+                self.callbacks['on_field_data'](value, 0, len(value))
+                self.callbacks['on_field_end']()
+            self.callbacks['on_end']()
+
+    class MultiPartParser:
+        def __init__(self, headers, stream, **kw):
+            self.headers = headers
+            self.stream = stream
+
+        async def parse(self):
+            import io
+            from starlette.datastructures import UploadFile, FormData
+            data = b''
+            async for chunk in self.stream:
+                data += chunk
+            if b'\r\n\r\n' not in data:
+                return FormData([])
+            header, body = data.split(b'\r\n\r\n', 1)
+            header_str = header.decode()
+            name = 'file'
+            if 'name="' in header_str:
+                name = header_str.split('name="')[1].split('"')[0]
+            filename = 'upload'
+            if 'filename="' in header_str:
+                filename = header_str.split('filename="')[1].split('"')[0]
+            return FormData(
+                [(name, UploadFile(filename=filename, file=io.BytesIO(body.strip())))]
+            )
+
+    class MultiPartException(Exception):
+        pass
+
+    m = sys.modules['multipart']
+    m.parse_options_header = parse_options_header
+    m.QuerystringParser = QuerystringParser
+    m.MultiPartParser = MultiPartParser
+    m.MultiPartException = MultiPartException
+    sys.modules['multipart.multipart'].parse_options_header = parse_options_header
+
 if 'multipart.multipart' not in sys.modules:
     sub = types.ModuleType('multipart.multipart')
-    sub.parse_options_header = lambda *a, **k: ('', '')
+    sub.parse_options_header = lambda *_a, **_k: (b'', {})
     sys.modules['multipart.multipart'] = sub
     if 'multipart' in sys.modules:
         sys.modules['multipart'].multipart = sub
 
-# minimal httpx stub for Starlette's TestClient
+# ── httpx stub with form / file support ───────────────────────────────────────
 if 'httpx' not in sys.modules:
     httpx = types.ModuleType('httpx')
 
@@ -127,12 +193,35 @@ if 'httpx' not in sys.modules:
             self.base_url = _URL(kwargs.get('base_url', ''))
 
         def request(self, method, url, **kwargs):
+            req = Request(method, url)
             data = kwargs.get('data')
-            req = Request(method, url, data=data)
-            if data is not None:
+            files = kwargs.get('files')
+
+            if isinstance(data, dict):
+                from urllib.parse import urlencode
                 req.headers['content-type'] = 'application/x-www-form-urlencoded'
-            resp = self._transport.handle_request(req)
-            return resp
+                req._content = urlencode(data).encode()
+
+            if isinstance(files, dict):
+                boundary = 'BOUNDARY'
+                parts = []
+                for name, (filename, content, ctype) in files.items():
+                    parts.append(
+                        (
+                            f'--{boundary}\r\n'
+                            f'Content-Disposition: form-data; name="{name}"; filename="{filename}"\r\n'
+                            f'Content-Type: {ctype}\r\n\r\n'
+                        ).encode()
+                        + content
+                        + b'\r\n'
+                    )
+                parts.append(f'--{boundary}--\r\n'.encode())
+                body = b''.join(parts)
+                req.headers['content-type'] = f'multipart/form-data; boundary={boundary}'
+                req.headers['content-length'] = str(len(body))
+                req._content = body
+
+            return self._transport.handle_request(req)
 
         def get(self, url, **kwargs):
             return self.request('GET', url, **kwargs)
@@ -154,21 +243,21 @@ if 'httpx' not in sys.modules:
     httpx._client = types.SimpleNamespace(
         USE_CLIENT_DEFAULT=object(),
         CookieTypes=object,
-        UseClientDefault=object,
-        TimeoutTypes=object,
+        UseClientDefault=object(),
+        TimeoutTypes=object(),
     )
     httpx._types = types.SimpleNamespace(
-        URLTypes=object,
-        HeaderTypes=object,
-        QueryParamTypes=object,
-        CookieTypes=object,
-        RequestContent=object,
-        RequestFiles=object,
-        AuthTypes=object,
+        URLTypes=object(),
+        HeaderTypes=object(),
+        QueryParamTypes=object(),
+        CookieTypes=object(),
+        RequestContent=object(),
+        RequestFiles=object(),
+        AuthTypes=object(),
     )
     sys.modules['httpx'] = httpx
 
-# starlette.templating stub so FastAPI can import without Jinja2
+# ── starlette templating shim ─────────────────────────────────────────────────
 if 'starlette.templating' not in sys.modules:
     st_templates = types.ModuleType('starlette.templating')
 
@@ -190,9 +279,8 @@ if 'starlette.templating' not in sys.modules:
     fastapi_templating.Jinja2Templates = DummyTemplates
     sys.modules['fastapi.templating'] = fastapi_templating
 
-# simple form parser replacement to avoid python-multipart dependency
+# ── Starlette form parser fallback ────────────────────────────────────────────
 import starlette.formparsers as fp
-from urllib.parse import parse_qs
 from starlette.datastructures import FormData
 
 class SimpleFormParser:
@@ -212,7 +300,7 @@ class SimpleFormParser:
 
 fp.FormParser = SimpleFormParser
 
-# stub passlib with minimal CryptContext
+# ── passlib stubs ─────────────────────────────────────────────────────────────
 passlib_context = types.ModuleType('passlib.context')
 passlib_context.CryptContext = lambda **kw: types.SimpleNamespace(
     hash=lambda p: p,
@@ -227,7 +315,7 @@ passlib_hash.bcrypt = types.SimpleNamespace(
 )
 sys.modules['passlib.hash'] = passlib_hash
 
-# stub Mongo and related modules used by db/mongo_utils
+# ── Mongo, bson plus helpers ──────────────────────────────────────────────────
 pymongo = types.ModuleType('pymongo')
 pymongo.MongoClient = lambda *a, **k: None
 pymongo.errors = types.SimpleNamespace(PyMongoError=Exception)
@@ -237,8 +325,7 @@ bson = types.ModuleType('bson')
 bson.ObjectId = str
 sys.modules['bson'] = bson
 
-# ── custom helper module stubs ────────────────────────────────────────────────
-# 1) standalone "db" module
+# ── db stub -------------------------------------------------------------------
 stub_db = types.ModuleType('db')
 stub_db.chat_find_one = lambda *a, **kw: None
 stub_db.chat_upsert = lambda *a, **kw: None
@@ -248,12 +335,10 @@ stub_db.resumes_collection = None
 stub_db.add_project_history = lambda *a, **kw: None
 sys.modules['db'] = stub_db
 
-# 2) unified "mongo_utils" module
+# ── mongo_utils merged stub ---------------------------------------------------
 stub_mongo_utils = types.ModuleType('mongo_utils')
-# original functions
 stub_mongo_utils.update_resume = lambda *a, **kw: None
 stub_mongo_utils.delete_resume_by_id = lambda *a, **kw: None
-# extra helpers from the other branch
 stub_mongo_utils.chat_find_one = lambda *a, **kw: None
 stub_mongo_utils.chat_upsert = lambda *a, **kw: None
 stub_mongo_utils.resumes_all = lambda: []
@@ -261,7 +346,6 @@ stub_mongo_utils.resumes_by_ids = lambda ids: []
 stub_mongo_utils.resumes_collection = None
 stub_mongo_utils.add_project_history = lambda *a, **kw: None
 
-# provide a dummy DB object that tolerates arbitrary collections
 class DummyColl:
     def __getattr__(self, name):
         return lambda *a, **k: None
@@ -271,26 +355,22 @@ class DummyDB(dict):
         return DummyColl()
 
 stub_mongo_utils.db = DummyDB()
-stub_mongo_utils._users = {}
+
+class _Users:
+    def create_index(self, *a, **kw): pass
+    def count_documents(self, *a, **kw): return 0
+    def insert_one(self, *a, **kw): pass
+    def find_one(self, *a, **kw): return None
+    def delete_one(self, *a, **kw): return types.SimpleNamespace(deleted_count=0)
+    def update_one(self, *a, **kw): return types.SimpleNamespace(modified_count=0)
+    def find(self, *a, **kw): return []
+
+stub_mongo_utils._users = _Users()
 stub_mongo_utils.ENV = 'test'
 stub_mongo_utils._guard = lambda op: False
 sys.modules['mongo_utils'] = stub_mongo_utils
 
-# minimal template stub so FastAPI can be imported without jinja2
-if 'fastapi.templating' not in sys.modules:
-    templating = types.ModuleType('fastapi.templating')
-
-    class Jinja2Templates:
-        def __init__(self, directory=None):
-            self.directory = directory
-
-        def TemplateResponse(self, name, ctx, status_code=200):
-            return types.SimpleNamespace(status_code=status_code)
-
-    templating.Jinja2Templates = Jinja2Templates
-    sys.modules['fastapi.templating'] = templating
-
-# stub FastAPI TestClient if missing
+# ── FastAPI TestClient stub ───────────────────────────────────────────────────
 if 'fastapi.testclient' not in sys.modules:
     testclient = types.ModuleType('fastapi.testclient')
 
@@ -327,7 +407,7 @@ if 'fastapi.testclient' not in sys.modules:
     testclient.TestClient = TestClient
     sys.modules['fastapi.testclient'] = testclient
 
-# stub pinecone_utils
+# ── pinecone utils stub ───────────────────────────────────────────────────────
 stub_pinecone_utils = types.ModuleType('pinecone_utils')
 stub_pinecone_utils.add_resume_to_pinecone = lambda *a, **kw: None
 stub_pinecone_utils.embed_text = lambda *a, **kw: []
@@ -335,7 +415,7 @@ stub_pinecone_utils.index = None
 stub_pinecone_utils.search_best_resumes = lambda *a, **kw: []
 sys.modules['pinecone_utils'] = stub_pinecone_utils
 
-# load main module manually so tests can import it without relying on sys.path
+# ── finally load main.py so tests can import it ───────────────────────────────
 import importlib.util
 import pathlib
 
