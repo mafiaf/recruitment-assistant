@@ -218,7 +218,32 @@ def extract_text(data: bytes, filename: str) -> str:
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request, user=Depends(require_login)):
-    return render(request, "index.html", page_title="Home")
+    # Fetch recent resumes for the front page (best effort – works without DB)
+    try:
+        docs = resumes_all()
+    except Exception as e:  # pragma: no cover - DB might be down
+        print("⚠️  resumes_all() failed:", e)
+        docs = []
+
+    # sort newest first and limit to 5 entries
+    docs.sort(key=lambda d: getattr(d.get("_id"), "generation_time", datetime.min),
+              reverse=True)
+    docs = docs[:5]
+
+    resumes = []
+    for d in docs:
+        oid = d.get("_id")
+        added = "—"
+        if hasattr(oid, "generation_time"):
+            added = oid.generation_time.strftime("%Y-%m-%d")
+
+        resumes.append({
+            "id": d.get("resume_id", "—"),
+            "name": d.get("name", "Unknown"),
+            "added": added,
+        })
+
+    return render(request, "index.html", {"resumes": resumes}, page_title="Home")
 
 
 @app.get("/chat", response_class=HTMLResponse)
@@ -418,57 +443,82 @@ def slugify(val: str) -> str:
 @app.post("/upload_resume", response_class=HTMLResponse)
 async def upload_resume(
     request: Request,
-    file: UploadFile | None = File(None),
+    file: List[UploadFile] | UploadFile | None = File(None),
     name: str | None = Form(None),
     text: str | None = Form(None),
     resume: ResumeUpload | None = Body(None),
     user=Depends(require_login),
 ):
-    """Handle résumé uploads from JSON or multipart forms."""
-    filename = ""
+    """Handle résumé uploads from JSON or multipart forms. Supports multiple files."""
+
+    added_names: List[str] = []
 
     # ── JSON payload -------------------------------------------------------
     if resume is not None:
         name = resume.name or name or ""
-        text = resume.text or text or ""
-    else:
-        # ── multipart/form-data -------------------------------------------
-        if file is not None:
-            filename = file.filename
-            data = await file.read()
-            text = extract_text(data, filename)
-        name = (name or "").strip()
-        text = (text or "").strip()
+        text = (resume.text or text or "").strip()
 
-    if not text.strip():
+        if not text:
+            return render(
+                request,
+                "index.html",
+                {"popup": "Résumé text is empty."},
+                page_title="Home",
+            )
+
+        display_name = guess_name(name, "", text)
+        resume_id = slugify(display_name)
+        add_resume_to_pinecone(text, resume_id, {"name": display_name, "text": text}, "resumes")
+        try:
+            resumes_collection.insert_one({"resume_id": resume_id, "name": display_name, "text": text})
+        except Exception as e:  # pragma: no cover
+            print("🛑 Mongo insert failed:", e)
+        added_names.append(display_name)
+
+    else:
+        # ── multipart/form-data (possibly multiple files) -----------------
+        files: List[UploadFile] = []
+        if isinstance(file, list):
+            files = file
+        elif file is not None:
+            files = [file]
+
+        if not files and text:
+            # fallback: text field without file
+            display_name = guess_name(name or "", "", text)
+            resume_id = slugify(display_name)
+            add_resume_to_pinecone(text, resume_id, {"name": display_name, "text": text}, "resumes")
+            try:
+                resumes_collection.insert_one({"resume_id": resume_id, "name": display_name, "text": text})
+            except Exception as e:  # pragma: no cover
+                print("🛑 Mongo insert failed:", e)
+            added_names.append(display_name)
+
+        for f in files:
+            filename = f.filename
+            data = await f.read()
+            file_text = extract_text(data, filename)
+            if not file_text.strip():
+                continue
+            display_name = guess_name(name or "", filename, file_text)
+            resume_id = slugify(display_name)
+            add_resume_to_pinecone(file_text, resume_id, {"name": display_name, "text": file_text}, "resumes")
+            try:
+                resumes_collection.insert_one({"resume_id": resume_id, "name": display_name, "text": file_text})
+            except Exception as e:  # pragma: no cover
+                print("🛑 Mongo insert failed:", e)
+            added_names.append(display_name)
+
+    if not added_names:
         return render(
             request,
             "index.html",
-            {"popup": "Résumé text is empty."},
+            {"popup": "No valid résumé uploaded."},
             page_title="Home",
         )
 
-    display_name = guess_name(name, filename, text)
-    resume_id = slugify(display_name)
-    add_resume_to_pinecone(
-        text,
-        resume_id,
-        {"name": display_name, "text": text},
-        "resumes",
-    )
-    try:
-        resumes_collection.insert_one(
-            {"resume_id": resume_id, "name": display_name, "text": text}
-        )
-    except Exception as e:  # pragma: no cover
-        print("🛑 Mongo insert failed:", e)
-
-    return render(
-        request,
-        "index.html",
-        {"popup": f"Résumé added: {display_name}"},
-        page_title="Home",
-    )
+    msg = "Résumés added: " + ", ".join(added_names) if len(added_names) > 1 else f"Résumé added: {added_names[0]}"
+    return render(request, "index.html", {"popup": msg}, page_title="Home")
 
 
 # ---------------------------------------------------------------------------
