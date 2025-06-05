@@ -44,6 +44,8 @@ from mongo_utils import (
     add_project_history,
     delete_project,
     ensure_indexes,
+    resumes_count,
+    resumes_page,
 )
 from pymongo import errors
 from pinecone_utils import (
@@ -579,18 +581,20 @@ async def match_project(
 
     return HTMLResponse(content=html_fragment)
 
-@app.get("/resumes", response_class=HTMLResponse)
-async def list_resumes(request: Request, user=Depends(require_login)):
-    """
-    Returns an overview of all résumés. Works even when MongoDB is offline.
-    """
-    try:
-        docs = await resumes_all()          # <- new helper (returns [] if DB down)
-    except Exception as e:            # pragma: no cover
-        logger.warning("resumes_all() failed: %s", e)
-        docs = []
+RESUMES_PER_PAGE = 20
 
-    # normalise for the template
+
+@app.get("/resumes", response_class=HTMLResponse)
+async def list_resumes(request: Request, page: int = 1, user=Depends(require_login)):
+    """Paginated résumé overview. Works even when MongoDB is offline."""
+    try:
+        docs = await resumes_page(page, RESUMES_PER_PAGE)
+        total = await resumes_count()
+    except Exception as e:  # pragma: no cover
+        logger.warning("resumes_page() failed: %s", e)
+        docs = []
+        total = 0
+
     resumes_for_tpl = []
     for d in docs:
         oid = d.get("_id")
@@ -598,29 +602,60 @@ async def list_resumes(request: Request, user=Depends(require_login)):
         if hasattr(oid, "generation_time"):
             added = oid.generation_time.strftime("%Y-%m-%d")
 
-        resumes_for_tpl.append({
-            "id":    d.get("resume_id", "—"),
-            "name":  d.get("name",       "Unknown"),
-            "text":  (d.get("text") or "")[:400] + "…",
-            "added": added,
-        })
+        resumes_for_tpl.append(
+            {
+                "id": d.get("resume_id", "—"),
+                "name": d.get("name", "Unknown"),
+                "text": (d.get("text") or "")[:400] + "…",
+                "added": added,
+            }
+        )
 
-    return await render(request, "resumes.html",
-                  {"resumes": resumes_for_tpl},
-                  page_title="Résumés", active="/resumes")
+    pages = (total + RESUMES_PER_PAGE - 1) // RESUMES_PER_PAGE
+    ctx = {
+        "resumes": resumes_for_tpl,
+        "page": page,
+        "pages": pages,
+        "prev_page": page - 1 if page > 1 else None,
+        "next_page": page + 1 if page < pages else None,
+    }
+    return await render(
+        request,
+        "resumes.html",
+        ctx,
+        page_title="Résumés",
+        active="/resumes",
+    )
+
+
+PROJECTS_PER_PAGE = 10
 
 
 @app.get("/projects", response_class=HTMLResponse)
-async def project_history(request: Request, user=Depends(require_login)):
+async def project_history(
+    request: Request, page: int = 1, user=Depends(require_login)
+):
     session_user = await get_current_user(request.cookies.get(COOKIE_NAME))
     user_id = session_user["username"] if session_user else "anon"
     doc = await chat_find_one({"user_id": user_id}) or {}
     projects = doc.get("projects", [])
     projects = sorted(projects, key=lambda p: p.get("ts", 0), reverse=True)
+    total = len(projects)
+    start = (page - 1) * PROJECTS_PER_PAGE
+    end = start + PROJECTS_PER_PAGE
+    page_projects = projects[start:end]
+    pages = (total + PROJECTS_PER_PAGE - 1) // PROJECTS_PER_PAGE
+    ctx = {
+        "projects": page_projects,
+        "page": page,
+        "pages": pages,
+        "prev_page": page - 1 if page > 1 else None,
+        "next_page": page + 1 if page < pages else None,
+    }
     return await render(
         request,
         "projects.html",
-        {"projects": projects},
+        ctx,
         page_title="Projects",
         active="/projects",
     )

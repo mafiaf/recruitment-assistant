@@ -7,19 +7,33 @@
   {% if projects %}
     {% for p in projects %}
       <details class="bg-white/70 backdrop-blur p-4 rounded shadow">
-        <summary class="cursor-pointer">
-          {{ p.description|truncate(80, True, '…') }}
+        <summary class="cursor-pointer flex justify-between items-center">
+          <span>{{ p.description|truncate(80, True, '…') }}</span>
+          <form action="/delete_project" method="post" class="inline" onclick="event.stopPropagation();">
+            <input type="hidden" name="ts" value="{{ p.ts.isoformat() }}">
+            <button type="submit" class="text-red-600 text-xs hover:underline" onclick="return confirm('Delete project?')">delete</button>
+          </form>
         </summary>
         <div class="mt-2 text-sm whitespace-pre-wrap">{{ p.description }}</div>
         <div class="overflow-auto">{{ p.table_html | safe }}</div>
-        <form action="/delete_project" method="post" class="mt-2">
-          <input type="hidden" name="ts" value="{{ p.ts.isoformat() }}">
-          <button type="submit" class="text-red-600 text-sm hover:underline" onclick="return confirm('Delete project?')">delete</button>
-        </form>
       </details>
     {% endfor %}
   {% else %}
     <p>No past projects found.</p>
   {% endif %}
+
+  <div class="flex justify-between items-center pt-2 text-sm">
+    {% if prev_page %}
+      <a href="/projects?page={{ prev_page }}" class="text-blue-600 hover:underline">&laquo; Prev</a>
+    {% else %}
+      <span></span>
+    {% endif %}
+    <span>Page {{ page }} of {{ pages }}</span>
+    {% if next_page %}
+      <a href="/projects?page={{ next_page }}" class="text-blue-600 hover:underline">Next &raquo;</a>
+    {% else %}
+      <span></span>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}
