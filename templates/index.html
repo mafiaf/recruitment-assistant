@@ -31,6 +31,9 @@
     </button>
   </form>
 
+  <!-- upload progress feedback -->
+  <div id="upload-progress" class="w-full max-w-xl"></div>
+
   <!-- ════════════════════════════════
        RECENT UPLOADS TABLE
        ════════════════════════════════ -->
@@ -104,22 +107,46 @@ dropZone.addEventListener('drop', e=>{
 });
 
 /* core upload logic */
-async function uploadFiles(files){
-  const fd = new FormData();
-  for(const file of files) fd.append('file', file);
-  /* you could collect additional fields here (e.g. name) */
+const progressBox = document.getElementById('upload-progress');
 
-  try{
-    const res = await fetch('/upload_resume', {method:'POST', body: fd});
-    if(!res.ok) throw new Error(await res.text());
+function createBar(name){
+  const wrapper = document.createElement('div');
+  wrapper.className = 'my-2';
+  wrapper.innerHTML = `
+    <div class="text-sm mb-1">${name}</div>
+    <div class="w-full bg-gray-200 rounded"><div class="h-2 bg-blue-600 rounded" style="width:0%"></div></div>
+  `;
+  progressBox.appendChild(wrapper);
+  return wrapper.querySelector('.h-2');
+}
 
-    await res.text();               // response not parsed
-    location.reload();
-  }catch(err){
-    alert('Upload failed: ' + err);
-  }finally{
-    fileInput.value = '';             // reset the picker
+function uploadFiles(files){
+  const uploads = [];
+  for(const file of files){
+    const bar = createBar(file.name);
+    uploads.push(uploadSingle(file, bar));
   }
+  Promise.allSettled(uploads).then(() => {
+    fileInput.value = '';
+    location.reload();
+  });
+}
+
+function uploadSingle(file, bar){
+  return new Promise((resolve, reject) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST','/upload_resume');
+    xhr.upload.onprogress = e=>{
+      if(e.lengthComputable){
+        bar.style.width = (e.loaded/e.total*100)+'%';
+      }
+    };
+    xhr.onload = () => xhr.status>=200 && xhr.status<300 ? resolve() : reject();
+    xhr.onerror = () => reject();
+    xhr.send(fd);
+  });
 }
 </script>
 {% endblock %}
