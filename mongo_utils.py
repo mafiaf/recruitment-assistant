@@ -5,7 +5,8 @@ from datetime import datetime
 from types import SimpleNamespace
 from typing import List
 
-from pymongo import MongoClient, errors
+from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import errors
 from bson import ObjectId
 from passlib.hash import bcrypt
 
@@ -21,16 +22,15 @@ MONGO_URI = settings.MONGO_URI            # Atlas SRV string for both envs
 DB_NAME = settings.db_name
 
 if ENV == "production":
-    client = MongoClient(
+    client = AsyncIOMotorClient(
         MONGO_URI,
         tls=True,
         tlsCAFile=certifi.where(),
         serverSelectionTimeoutMS=5_000,
     )
 else:  # development – local Mongo, no TLS
-    client = MongoClient(
+    client = AsyncIOMotorClient(
         MONGO_URI,          # now "mongodb://localhost:27017"
-        connect=False,
         tls=False,
         serverSelectionTimeoutMS=5_000,
     )
@@ -44,25 +44,26 @@ chats = db["chats"]
 print(f"🟢 mongo_utils ready – env:{ENV} DB:{DB_NAME} collection:{_resumes.name}")
 
 # create unique index only in production
-if ENV == "production":
-    try:
-        _users.create_index("username", unique=True)
-    except errors.PyMongoError as exc:
-        logging.error("🛑 could not create users.username index")
-        logging.error(exc)
+async def ensure_indexes():
+    if ENV == "production":
+        try:
+            await _users.create_index("username", unique=True)
+        except errors.PyMongoError as exc:
+            logging.error("🛑 could not create users.username index")
+            logging.error(exc)
 
 # ------------------------------------------------------------------ #
 # 1) resilient guard layer                                           #
 # ------------------------------------------------------------------ #
 _MONGO_DOWN = False
 
-def _guard(op: str) -> bool:
+async def _guard(op: str) -> bool:
     global _MONGO_DOWN
     if _MONGO_DOWN:
         logging.warning(f"⚠️  mongo down – {op} returns empty/0")
         return True
     try:
-        client.admin.command("ping")
+        await client.admin.command("ping")
         return False
     except errors.PyMongoError as exc:
         logging.error("🛑 Mongo unreachable – switching to NO-DB mode")
@@ -73,32 +74,34 @@ def _guard(op: str) -> bool:
 # ------------------------------------------------------------------ #
 # 2) CRUD helpers                                                    #
 # ------------------------------------------------------------------ #
-def get_user(username: str):
-    return _users.find_one({"username": username})
+async def get_user(username: str):
+    return await _users.find_one({"username": username})
 
-def create_user(username: str, pw: str, role: str = "user"):
-    _users.insert_one({
+async def create_user(username: str, pw: str, role: str = "user"):
+    await _users.insert_one({
         "username": username,
         "password_hash": bcrypt.hash(pw),
         "role": role,
         "created": datetime.utcnow()
     })
 
-def verify_password(username: str, pw: str) -> dict | None:
-    doc = get_user(username)
+async def verify_password(username: str, pw: str) -> dict | None:
+    doc = await get_user(username)
     if doc and bcrypt.verify(pw, doc["password_hash"]):
         return doc
     return None
 
-def get_all_resumes() -> List[dict]:
-    if _guard("get_all_resumes"):
+async def get_all_resumes() -> List[dict]:
+    if await _guard("get_all_resumes"):
         return []
-    return list(_resumes.find())
+    cursor = _resumes.find()
+    return await cursor.to_list(None)
 
-def get_resumes_by_ids(id_list: List[str]):
-    if _guard("get_resumes_by_ids"):
+async def get_resumes_by_ids(id_list: List[str]):
+    if await _guard("get_resumes_by_ids"):
         return []
-    docs = _resumes.find({"_id": {"$in": [ObjectId(i) for i in id_list]}})
+    cursor = _resumes.find({"_id": {"$in": [ObjectId(i) for i in id_list]}})
+    docs = await cursor.to_list(None)
     return [
         SimpleNamespace(
             id=doc["resume_id"],
@@ -106,12 +109,12 @@ def get_resumes_by_ids(id_list: List[str]):
         ) for doc in docs
     ]
 
-def update_resume(resume_id: str, name: str, text: str) -> int:
-    old = _resumes.find_one({"resume_id": resume_id})
+async def update_resume(resume_id: str, name: str, text: str) -> int:
+    old = await _resumes.find_one({"resume_id": resume_id})
     if not old:
         return 0
 
-    res = _resumes.update_one(
+    res = await _resumes.update_one(
         {"resume_id": resume_id},
         {"$set": {"name": name, "text": text}},
     )
@@ -132,72 +135,74 @@ def update_resume(resume_id: str, name: str, text: str) -> int:
 
     return res.modified_count
 
-def delete_resume_by_id(resume_id: str) -> int:
-    if _guard("delete_resume_by_id"):
+async def delete_resume_by_id(resume_id: str) -> int:
+    if await _guard("delete_resume_by_id"):
         return 0
-    res = _resumes.delete_one({"resume_id": resume_id.strip()})
+    res = await _resumes.delete_one({"resume_id": resume_id.strip()})
     return res.deleted_count
 
 # ------------------------------------------------------------------ #
 # 3) chat and project helpers (migrated from db.py)                   #
 # ------------------------------------------------------------------ #
 
-def chat_find_one(query: dict):
-    if _guard("chat_find_one"):
+async def chat_find_one(query: dict):
+    if await _guard("chat_find_one"):
         return None
-    return chats.find_one(query)
+    return await chats.find_one(query)
 
 
-def chat_upsert(user_id: str, messages: List[dict]):
-    if _guard("chat_upsert"):
+async def chat_upsert(user_id: str, messages: List[dict]):
+    if await _guard("chat_upsert"):
         return
-    chats.update_one(
+    await chats.update_one(
         {"user_id": user_id},
         {"$set": {"messages": messages, "ts": datetime.utcnow()}},
         upsert=True,
     )
 
 
-def resumes_all():
-    if _guard("resumes_all"):
+async def resumes_all():
+    if await _guard("resumes_all"):
         return []
-    return list(resumes_collection.find())
+    cursor = resumes_collection.find()
+    return await cursor.to_list(None)
 
 
-def resumes_by_ids(id_list: List[str]):
-    if _guard("resumes_by_ids"):
+async def resumes_by_ids(id_list: List[str]):
+    if await _guard("resumes_by_ids"):
         return []
-    cur = resumes_collection.find({"_id": {"$in": [ObjectId(i) for i in id_list]}})
+    cursor = resumes_collection.find({"_id": {"$in": [ObjectId(i) for i in id_list]}})
+    docs = await cursor.to_list(None)
     return [
         SimpleNamespace(
             id=doc["resume_id"],
             metadata={"name": doc["name"], "text": doc["text"]},
         )
-        for doc in cur
+        for doc in docs
     ]
 
 
-def add_project_history(user_id: str, project: dict):
+async def add_project_history(user_id: str, project: dict):
     """Append a project entry and update last_project."""
-    if _guard("add_project_history"):
+    if await _guard("add_project_history"):
         return
     project.setdefault("ts", datetime.utcnow())
-    chats.update_one(
+    await chats.update_one(
         {"user_id": user_id},
         {"$push": {"projects": project}, "$set": {"last_project": project, "ts": datetime.utcnow()}},
         upsert=True,
     )
 
 
-def delete_project(user_id: str, ts_iso: str) -> int:
+async def delete_project(user_id: str, ts_iso: str) -> int:
     """Delete a project by timestamp for the given user."""
-    if _guard("delete_project"):
+    if await _guard("delete_project"):
         return 0
     try:
         ts = datetime.fromisoformat(ts_iso)
     except ValueError:
         return 0
-    res = chats.update_one(
+    res = await chats.update_one(
         {"user_id": user_id},
         {"$pull": {"projects": {"ts": ts}}},
     )

@@ -323,6 +323,22 @@ pymongo.MongoClient = lambda *a, **k: None
 pymongo.errors = types.SimpleNamespace(PyMongoError=Exception)
 sys.modules['pymongo'] = pymongo
 
+# async Mongo driver stub
+motor = types.ModuleType('motor')
+motor_asyncio = types.ModuleType('motor.motor_asyncio')
+
+class DummyMotorClient:
+    def __init__(self, *a, **k):
+        self.admin = types.SimpleNamespace(command=lambda *a, **k: None)
+
+    def __getitem__(self, name):
+        return DummyDB()
+
+motor_asyncio.AsyncIOMotorClient = DummyMotorClient
+motor.motor_asyncio = motor_asyncio
+sys.modules['motor'] = motor
+sys.modules['motor.motor_asyncio'] = motor_asyncio
+
 bson = types.ModuleType('bson')
 bson.ObjectId = str
 sys.modules['bson'] = bson
@@ -339,15 +355,25 @@ sys.modules['db'] = stub_db
 
 # ── mongo_utils merged stub ---------------------------------------------------
 stub_mongo_utils = types.ModuleType('mongo_utils')
-stub_mongo_utils.update_resume = lambda *a, **kw: None
-stub_mongo_utils.delete_resume_by_id = lambda *a, **kw: None
-stub_mongo_utils.chat_find_one = lambda *a, **kw: None
-stub_mongo_utils.chat_upsert = lambda *a, **kw: None
-stub_mongo_utils.resumes_all = lambda: []
-stub_mongo_utils.resumes_by_ids = lambda ids: []
+async def _async_none(*a, **kw):
+    return None
+
+async def _async_list(*a, **kw):
+    return []
+
+async def _async_one(*a, **kw):
+    return 1
+
+stub_mongo_utils.update_resume = _async_one
+stub_mongo_utils.delete_resume_by_id = _async_one
+stub_mongo_utils.chat_find_one = _async_none
+stub_mongo_utils.chat_upsert = _async_none
+stub_mongo_utils.resumes_all = _async_list
+stub_mongo_utils.resumes_by_ids = _async_list
 stub_mongo_utils.resumes_collection = None
-stub_mongo_utils.add_project_history = lambda *a, **kw: None
-stub_mongo_utils.delete_project = lambda *a, **kw: 1
+stub_mongo_utils.add_project_history = _async_none
+stub_mongo_utils.delete_project = _async_one
+stub_mongo_utils.ensure_indexes = _async_none
 
 class DummyColl:
     def __getattr__(self, name):
@@ -360,13 +386,26 @@ class DummyDB(dict):
 stub_mongo_utils.db = DummyDB()
 
 class _Users:
-    def create_index(self, *a, **kw): pass
-    def count_documents(self, *a, **kw): return 0
-    def insert_one(self, *a, **kw): pass
-    def find_one(self, *a, **kw): return None
-    def delete_one(self, *a, **kw): return types.SimpleNamespace(deleted_count=0)
-    def update_one(self, *a, **kw): return types.SimpleNamespace(modified_count=0)
-    def find(self, *a, **kw): return []
+    async def create_index(self, *a, **kw):
+        pass
+
+    async def count_documents(self, *a, **kw):
+        return 0
+
+    async def insert_one(self, *a, **kw):
+        pass
+
+    async def find_one(self, *a, **kw):
+        return None
+
+    async def delete_one(self, *a, **kw):
+        return types.SimpleNamespace(deleted_count=0)
+
+    async def update_one(self, *a, **kw):
+        return types.SimpleNamespace(modified_count=0)
+
+    async def find(self, *a, **kw):
+        return []
 
 stub_mongo_utils._users = _Users()
 stub_mongo_utils.ENV = 'test'

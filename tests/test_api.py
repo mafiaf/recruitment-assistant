@@ -10,8 +10,14 @@ class DummyRequest:
 
 @pytest.fixture
 def authed(monkeypatch):
-    monkeypatch.setattr(main, "require_login", lambda: {"username": "u", "role": "user"})
-    monkeypatch.setattr(main, "get_current_user", lambda *a, **k: {"username": "u", "role": "user"})
+    async def _require_login():
+        return {"username": "u", "role": "user"}
+
+    async def _get_current_user(*a, **k):
+        return {"username": "u", "role": "user"}
+
+    monkeypatch.setattr(main, "require_login", _require_login)
+    monkeypatch.setattr(main, "get_current_user", _get_current_user)
     fake_openai = types.SimpleNamespace(
         chat=types.SimpleNamespace(
             completions=types.SimpleNamespace(
@@ -23,8 +29,14 @@ def authed(monkeypatch):
     )
     monkeypatch.setattr(main, "openai", fake_openai)
     monkeypatch.setattr(main, "add_resume_to_pinecone", lambda *a, **k: None)
-    monkeypatch.setattr(main, "resumes_collection", types.SimpleNamespace(insert_one=lambda doc: None))
-    monkeypatch.setattr(main, "render", lambda *a, **kw: HTMLResponse("OK"))
+    async def _insert(doc):
+        return None
+
+    monkeypatch.setattr(main, "resumes_collection", types.SimpleNamespace(insert_one=_insert))
+    async def _render(*a, **kw):
+        return HTMLResponse("OK")
+
+    monkeypatch.setattr(main, "render", _render)
     return None
 
 @pytest.mark.asyncio
@@ -40,6 +52,7 @@ async def test_chat_json(authed):
     assert resp.body == b'{"reply":"hi"}' or resp.body == b'{"reply": "hi"}'
 
 
-def test_delete_project(authed):
-    resp = main.delete_project_route(DummyRequest("/delete_project"), ts="2023-01-01T00:00:00")
+@pytest.mark.asyncio
+async def test_delete_project(authed):
+    resp = await main.delete_project_route(DummyRequest("/delete_project"), ts="2023-01-01T00:00:00")
     assert resp.status_code == 303
