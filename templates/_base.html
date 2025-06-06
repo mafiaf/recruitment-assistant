@@ -53,53 +53,58 @@
 
      (pass  user=current_user  whenever you call TemplateResponse)
   # ------------------------------------------------------------- #}
-  <header class="fixed top-0 inset-x-0 h-16 bg-white/80 backdrop-blur-md shadow-md flex items-center justify-between px-8">
-    <span class="font-semibold text-indigo-600">Recruitment Assistant</span>
-
-    <nav class="space-x-6 text-sm">
-      {# regular links #}
-      <a href="/"
-         class="{{ 'text-indigo-600 font-semibold' if active=='/' else
-                  'text-gray-700 hover:text-indigo-600' }}">Home</a>
-
-      <a href="/resumes"
-         class="{{ 'text-indigo-600 font-semibold' if active=='/resumes' else
-                  'text-gray-700 hover:text-indigo-600' }}">Résumés</a>
-
-      <a href="/chat"
-         class="{{ 'text-indigo-600 font-semibold' if active=='/chat' else
-                  'text-gray-700 hover:text-indigo-600' }}">Chat</a>
-
-      <a href="/projects"
-         class="{{ 'text-indigo-600 font-semibold' if active=='/projects' else
-                  'text-gray-700 hover:text-indigo-600' }}">Projects</a>
-
-      {# profile for *any* logged-in user #}
-      {% if user %}
-        <a href="/profile"
-           class="{{ 'text-indigo-600 font-semibold' if active=='/profile' else
-                    'text-gray-700 hover:text-indigo-600' }}">Profile</a>
-      {% endif %}
-
-      {# owner-only admin page #}
-      {% if user and user.role == 'owner' %}
-        <a href="/admin/users"
-           class="{{ 'text-indigo-600 font-semibold' if active=='/admin/users' else
-                    'text-gray-700 hover:text-indigo-600' }}">Users</a>
-      {% endif %}
-
-      {# login / logout #}
-      {% if user %}
-        <a href="/logout" class="text-gray-700 hover:text-indigo-600">Logout</a>
-      {% else %}
-        <a href="/login"
-           class="{{ 'text-indigo-600 font-semibold' if active=='/login' else
-                    'text-gray-700 hover:text-indigo-600' }}">Login</a>
-      {% endif %}
+  <header id="siteHeader" class="fixed top-0 inset-x-0 relative bg-transparent">
+    <div class="absolute inset-0 bg-hero-gradient"></div>
+    <nav id="mainNav" class="relative z-10 max-w-7xl mx-auto flex items-center justify-between px-6 py-6 bg-white bg-opacity-20 backdrop-blur-md rounded-lg shadow-md transition-all">
+      <a href="/" class="flex items-center space-x-2">
+        <svg class="h-8 w-8 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 2L2 7l10 5 10-5-10-5zm0 11l-10-5v10l10 5 10-5V8l-10 5z" />
+        </svg>
+        <span class="text-white text-2xl font-semibold">Recruitment Assistant</span>
+      </a>
+      <ul class="hidden md:flex items-center space-x-6">
+        <li><a href="/" class="text-gray-900 text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/' else '' }}">Home</a></li>
+        <li><a href="/resumes" class="text-gray-900 text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/resumes' else '' }}">Résumés</a></li>
+        <li><a href="/chat" class="text-gray-900 text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/chat' else '' }}">Chat</a></li>
+        <li><a href="/projects" class="text-gray-900 text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/projects' else '' }}">Projects</a></li>
+        {% if user %}
+          <li><a href="/profile" class="text-gray-900 text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/profile' else '' }}">Profile</a></li>
+        {% endif %}
+        {% if user and user.role == 'owner' %}
+          <li><a href="/admin/users" class="text-gray-900 text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/admin/users' else '' }}">Users</a></li>
+        {% endif %}
+        {% if user %}
+          <li><a href="/logout" class="text-gray-900 text-base font-medium hover:text-accent transition-colors">Logout</a></li>
+        {% else %}
+          <li><a href="/login" class="text-gray-900 text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/login' else '' }}">Login</a></li>
+        {% endif %}
+      </ul>
+      <button id="menuBtn" class="md:hidden text-white focus:outline-none focus:ring-2 focus:ring-white">
+        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
     </nav>
+    <div id="mobileMenu" class="fixed inset-0 bg-hero-gradient bg-opacity-95 transform -translate-y-full transition-transform duration-300 flex flex-col items-center justify-center space-y-6 text-2xl text-white">
+      <a data-aos="fade-down" href="/">Home</a>
+      <a data-aos="fade-down" href="/resumes">Résumés</a>
+      <a data-aos="fade-down" href="/chat">Chat</a>
+      <a data-aos="fade-down" href="/projects">Projects</a>
+      {% if user %}
+        <a data-aos="fade-down" href="/profile">Profile</a>
+      {% endif %}
+      {% if user and user.role == 'owner' %}
+        <a data-aos="fade-down" href="/admin/users">Users</a>
+      {% endif %}
+      {% if user %}
+        <a data-aos="fade-down" href="/logout">Logout</a>
+      {% else %}
+        <a data-aos="fade-down" href="/login">Login</a>
+      {% endif %}
+    </div>
   </header>
 
-  <main class="pt-20 p-6">
+  <main class="pt-24 p-6">
     {% if page_title %}
       <h1 class="text-2xl font-semibold px-6 mb-4">{{ page_title }}</h1>
     {% endif %}

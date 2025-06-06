@@ -20,10 +20,6 @@ b, strong {
   transition: color 150ms ease-in-out, box-shadow 150ms ease-in-out;
 }
 
-header {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-}
 
 .card {
   background: rgba(255, 255, 255, 0.7);
