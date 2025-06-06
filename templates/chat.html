@@ -40,8 +40,10 @@
       {# quick prompts row #}
       <div id="quick-prompts" class="border-t bg-white/70 backdrop-blur p-4 flex flex-wrap gap-2">
         {% for pr in quick_prompts %}
+
         <button type="button" class="quick-prompt bg-gray-200 px-2 py-1 rounded" data-text="{{ pr.text }}">
           {{ pr.title }}
+
         </button>
         {% endfor %}
       </div>
