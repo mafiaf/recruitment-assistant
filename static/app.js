@@ -28,6 +28,7 @@ if (mobileBtn && mobileMenu) {
 
 const nav = document.getElementById('mainNav');
 if (nav) {
+
   const links = nav.querySelectorAll('ul a');
   const brand = nav.querySelector('a.flex');
   const menuBtn = document.getElementById('menuBtn');
