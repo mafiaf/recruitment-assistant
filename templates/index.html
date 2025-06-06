@@ -4,6 +4,18 @@
 {% set page_title = "Home" %}
 
 {% block body %}
+<section class="relative h-screen before:content-[''] before:absolute before:inset-0 before:bg-[url('/static/noise.svg')] before:opacity-10">
+  <div class="absolute inset-0 bg-hero-gradient"></div>
+  <canvas id="particleCanvas" class="absolute inset-0"></canvas>
+  <div class="relative z-10 flex flex-col items-center justify-center h-full px-6 text-center space-y-6">
+    <h1 class="text-5xl sm:text-6xl font-bold text-white leading-tight" data-aos="fade-up">Upload Your Résumé in a Flash</h1>
+    <p class="text-lg sm:text-xl text-gray-100 max-w-2xl" data-aos="fade-up" data-aos-delay="200">Our AI-powered recruitment assistant evaluates profiles instantly and suggests next steps</p>
+    <button id="uploadCTA" class="mt-6 bg-accent text-white font-semibold rounded-lg px-8 py-4 text-lg hover:bg-accent-dark active:scale-95 transition-transform focus:ring-2 focus:ring-white" data-aos="zoom-in" data-aos-delay="400">Get Started</button>
+    <input type="file" accept=".pdf,.docx" class="hidden" id="fileInput">
+    <div class="absolute bottom-10 animate-bounce text-white"><svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 14l-6-6h12l-6 6z" clip-rule="evenodd" /></svg></div>
+  </div>
+</section>
+
 <div class="pt-6 flex flex-col items-center gap-8 max-w-7xl mx-auto">
 
   <!-- ════════════════════════════════
@@ -75,6 +87,15 @@
 const dropZone  = document.getElementById('resume-form');
 const fileInput = document.getElementById('resume-file');
 const browseBtn = document.getElementById('select-btn');
+const heroInput = document.getElementById('fileInput');
+const uploadCTA = document.getElementById('uploadCTA');
+
+if (uploadCTA && heroInput) {
+  uploadCTA.addEventListener('click', () => heroInput.click());
+  heroInput.addEventListener('change', () => {
+    if (heroInput.files.length) uploadFiles(heroInput.files);
+  });
+}
 
 
 /* click → open picker */
@@ -148,5 +169,44 @@ function uploadSingle(file, bar){
     xhr.send(fd);
   });
 }
+
+function initParticles(){
+  const canvas = document.getElementById('particleCanvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let w, h;
+  const particles = [];
+  function resize(){
+    w = canvas.width = canvas.offsetWidth;
+    h = canvas.height = canvas.offsetHeight;
+    particles.length = 0;
+    for(let i=0;i<50;i++){
+      particles.push({
+        x: Math.random()*w,
+        y: Math.random()*h,
+        r: 1+Math.random()*3,
+        vx: -0.5+Math.random(),
+        vy: -0.5+Math.random()
+      });
+    }
+  }
+  function draw(){
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    particles.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0) p.x=w; if(p.x>w) p.x=0; if(p.y<0) p.y=h; if(p.y>h) p.y=0;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  draw();
+}
+
+initParticles();
 </script>
 {% endblock %}

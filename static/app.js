@@ -8,6 +8,13 @@ export function heroTimeline(selector) {
   return gsap.timeline().from(selector, { opacity: 0, y: 50, duration: 1 });
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+  const hero = document.querySelector('section.relative.h-screen');
+  if (hero) {
+    heroTimeline(hero.querySelectorAll('h1, p, #uploadCTA'));
+  }
+});
+
 const mobileBtn = document.getElementById('menuBtn');
 const mobileMenu = document.getElementById('mobileMenu');
 if (mobileBtn && mobileMenu) {
