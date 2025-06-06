@@ -1,9 +1,23 @@
 /* Custom global styles */
+html {
+  font-size: 16px;
+  line-height: 1.6;
+}
 body {
   font-family: 'Inter', sans-serif;
+  font-weight: 400;
   background: linear-gradient(135deg, #eef2ff, #f8fafc);
   min-height: 100vh;
   color: #1e293b;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+}
+b, strong {
+  font-weight: 700;
+}
+* {
+  transition: color 150ms ease-in-out, box-shadow 150ms ease-in-out;
 }
 
 header {
@@ -14,11 +28,14 @@ header {
 .card {
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(8px);
-  border-radius: 0.75rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.15);
   padding: 1.5rem;
 }
 
 input, textarea, select {
   border-color: #d1d5db;
+}
+.hero {
+  background-image: linear-gradient(135deg,#4F46E5 0%,#9333EA 100%);
 }
