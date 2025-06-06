@@ -28,13 +28,29 @@ if (mobileBtn && mobileMenu) {
 
 const nav = document.getElementById('mainNav');
 if (nav) {
+  const links = nav.querySelectorAll('ul a');
+  const brand = nav.querySelector('a.flex');
+  const menuBtn = document.getElementById('menuBtn');
   window.addEventListener('scroll', () => {
-    if (window.scrollY > 50) {
-      nav.classList.add('bg-white', 'bg-opacity-90', 'shadow-lg', 'py-2');
-      nav.classList.remove('py-6');
-    } else {
-      nav.classList.remove('bg-white', 'bg-opacity-90', 'shadow-lg', 'py-2');
-      nav.classList.add('py-6');
+    const scrolled = window.scrollY > 50;
+    nav.classList.toggle('bg-white', scrolled);
+    nav.classList.toggle('bg-opacity-90', scrolled);
+    nav.classList.toggle('shadow-lg', scrolled);
+    nav.classList.toggle('py-2', scrolled);
+    nav.classList.toggle('py-6', !scrolled);
+    links.forEach(l => {
+      l.classList.toggle('text-gray-800', scrolled);
+      l.classList.toggle('text-white', !scrolled);
+    });
+    if (brand) {
+      brand.classList.toggle('text-gray-800', scrolled);
+      brand.classList.toggle('text-white', !scrolled);
+    }
+    if (menuBtn) {
+      menuBtn.classList.toggle('text-gray-800', scrolled);
+      menuBtn.classList.toggle('text-white', !scrolled);
+      menuBtn.classList.toggle('focus:ring-gray-800', scrolled);
+      menuBtn.classList.toggle('focus:ring-white', !scrolled);
     }
   });
 }

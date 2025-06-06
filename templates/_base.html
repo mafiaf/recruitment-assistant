@@ -56,27 +56,27 @@
   <header id="siteHeader" class="fixed top-0 inset-x-0 relative bg-transparent">
     <div class="absolute inset-0 bg-hero-gradient"></div>
     <nav id="mainNav" class="relative z-10 max-w-7xl mx-auto flex items-center justify-between px-6 py-6 bg-white bg-opacity-20 backdrop-blur-md rounded-lg shadow-md transition-all">
-      <a href="/" class="flex items-center space-x-2">
-        <svg class="h-8 w-8 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <a href="/" class="flex items-center space-x-2 text-white">
+        <svg class="h-8 w-8" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M12 2L2 7l10 5 10-5-10-5zm0 11l-10-5v10l10 5 10-5V8l-10 5z" />
         </svg>
-        <span class="text-white text-2xl font-semibold">Recruitment Assistant</span>
+        <span class="text-2xl font-semibold">Recruitment Assistant</span>
       </a>
       <ul class="hidden md:flex items-center space-x-6">
-        <li><a href="/" class="text-gray-800 text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/' else '' }}">Home</a></li>
-        <li><a href="/resumes" class="text-gray-800 text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/resumes' else '' }}">Résumés</a></li>
-        <li><a href="/chat" class="text-gray-800 text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/chat' else '' }}">Chat</a></li>
-        <li><a href="/projects" class="text-gray-800 text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/projects' else '' }}">Projects</a></li>
+        <li><a href="/" class="text-white text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/' else '' }}">Home</a></li>
+        <li><a href="/resumes" class="text-white text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/resumes' else '' }}">Résumés</a></li>
+        <li><a href="/chat" class="text-white text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/chat' else '' }}">Chat</a></li>
+        <li><a href="/projects" class="text-white text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/projects' else '' }}">Projects</a></li>
         {% if user %}
-          <li><a href="/profile" class="text-gray-800 text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/profile' else '' }}">Profile</a></li>
+          <li><a href="/profile" class="text-white text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/profile' else '' }}">Profile</a></li>
         {% endif %}
         {% if user and user.role == 'owner' %}
-          <li><a href="/admin/users" class="text-gray-800 text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/admin/users' else '' }}">Users</a></li>
+          <li><a href="/admin/users" class="text-white text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/admin/users' else '' }}">Users</a></li>
         {% endif %}
         {% if user %}
-          <li><a href="/logout" class="text-gray-800 text-base font-medium hover:text-accent transition-colors">Logout</a></li>
+          <li><a href="/logout" class="text-white text-base font-medium hover:text-accent transition-colors">Logout</a></li>
         {% else %}
-          <li><a href="/login" class="text-gray-800 text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/login' else '' }}">Login</a></li>
+          <li><a href="/login" class="text-white text-base font-medium hover:text-accent transition-colors {{ 'font-semibold' if active=='/login' else '' }}">Login</a></li>
         {% endif %}
       </ul>
       <button id="menuBtn" class="md:hidden text-white focus:outline-none focus:ring-2 focus:ring-white">
