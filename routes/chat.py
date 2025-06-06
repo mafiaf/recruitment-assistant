@@ -8,6 +8,7 @@ router = APIRouter()
 
 # default set of quick prompt templates shown in the chat UI
 QUICK_PROMPTS = [
+
     {
         "title": "Resume Audit",
         "text": (
@@ -56,6 +57,7 @@ QUICK_PROMPTS = [
             "with specific, impressive examples"
         ),
     },
+
 ]
 
 @router.get("/chat", response_class=HTMLResponse)
