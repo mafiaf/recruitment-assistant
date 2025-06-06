@@ -20,48 +20,52 @@
 
      (pass  user=current_user  whenever you call TemplateResponse)
   # ------------------------------------------------------------- #}
-  <header class="fixed top-0 inset-x-0 h-16 bg-white/80 backdrop-blur-md shadow-md flex items-center justify-between px-8">
+  <header class="fixed top-0 inset-x-0 h-16 bg-white/70 backdrop-blur-lg shadow transition-shadow duration-300 flex items-center justify-between px-4 md:px-8">
     <span class="font-semibold text-indigo-600">Recruitment Assistant</span>
 
-    <nav class="space-x-6 text-sm">
+    <button id="nav-toggle" class="md:hidden p-2 rounded hover:bg-indigo-50 transition" aria-label="Toggle navigation">
+      &#9776;
+    </button>
+
+    <nav id="nav-menu" class="hidden md:flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-6 text-sm mt-4 md:mt-0 transition-all duration-300">
       {# regular links #}
       <a href="/"
          class="{{ 'text-indigo-600 font-semibold' if active=='/' else
-                  'text-gray-700 hover:text-indigo-600' }}">Home</a>
+                  'text-gray-700 hover:text-indigo-600' }} transition-colors">Home</a>
 
       <a href="/resumes"
          class="{{ 'text-indigo-600 font-semibold' if active=='/resumes' else
-                  'text-gray-700 hover:text-indigo-600' }}">Résumés</a>
+                  'text-gray-700 hover:text-indigo-600' }} transition-colors">Résumés</a>
 
       <a href="/chat"
          class="{{ 'text-indigo-600 font-semibold' if active=='/chat' else
-                  'text-gray-700 hover:text-indigo-600' }}">Chat</a>
+                  'text-gray-700 hover:text-indigo-600' }} transition-colors">Chat</a>
 
       <a href="/projects"
          class="{{ 'text-indigo-600 font-semibold' if active=='/projects' else
-                  'text-gray-700 hover:text-indigo-600' }}">Projects</a>
+                  'text-gray-700 hover:text-indigo-600' }} transition-colors">Projects</a>
 
       {# profile for *any* logged-in user #}
       {% if user %}
         <a href="/profile"
            class="{{ 'text-indigo-600 font-semibold' if active=='/profile' else
-                    'text-gray-700 hover:text-indigo-600' }}">Profile</a>
+                    'text-gray-700 hover:text-indigo-600' }} transition-colors">Profile</a>
       {% endif %}
 
       {# owner-only admin page #}
       {% if user and user.role == 'owner' %}
         <a href="/admin/users"
            class="{{ 'text-indigo-600 font-semibold' if active=='/admin/users' else
-                    'text-gray-700 hover:text-indigo-600' }}">Users</a>
+                    'text-gray-700 hover:text-indigo-600' }} transition-colors">Users</a>
       {% endif %}
 
       {# login / logout #}
       {% if user %}
-        <a href="/logout" class="text-gray-700 hover:text-indigo-600">Logout</a>
+        <a href="/logout" class="text-gray-700 hover:text-indigo-600 transition-colors">Logout</a>
       {% else %}
         <a href="/login"
            class="{{ 'text-indigo-600 font-semibold' if active=='/login' else
-                    'text-gray-700 hover:text-indigo-600' }}">Login</a>
+                    'text-gray-700 hover:text-indigo-600' }} transition-colors">Login</a>
       {% endif %}
     </nav>
   </header>
@@ -74,5 +78,20 @@
   </main>
 
   {% block extra_js %}{% endblock %}
+  <script>
+    const nav = document.getElementById('nav-menu');
+    const toggle = document.getElementById('nav-toggle');
+    const header = document.querySelector('header');
+    toggle?.addEventListener('click', () => {
+      nav.classList.toggle('hidden');
+    });
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 10) {
+        header.classList.add('shadow-lg', 'bg-white/90');
+      } else {
+        header.classList.remove('shadow-lg', 'bg-white/90');
+      }
+    });
+  </script>
 </body>
 </html>
