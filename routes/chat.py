@@ -6,6 +6,58 @@ from schemas import ChatRequest
 
 router = APIRouter()
 
+# default set of quick prompt templates shown in the chat UI
+QUICK_PROMPTS = [
+    {
+        "title": "Resume Audit",
+        "text": (
+            "Act like a recruiter with 10+ years' experience. "
+            "Review this resume and tell me exactly why it's getting ignored. "
+            "Be Direct. No sugarcoating. Point out what's weak and how to fix it."
+        ),
+    },
+    {
+        "title": "ATS Optimization",
+        "text": (
+            "Rewrite my resume to be 100% complient ATS-optimized for a "
+            "[Insert job title] role. Add industry-specific keywords, skills, "
+            "and quantify my achievements - without sounding robotic."
+        ),
+    },
+    {
+        "title": "Job Match customization",
+        "text": (
+            "Take this job description and align my resume with it line by line. "
+            "Match tone, skills, and results to what they're asking for - keep it "
+            "sharp and honest"
+        ),
+    },
+    {
+        "title": "Confidence rewrite",
+        "text": (
+            "Rewrite my resume to sound bold and high-performing. "
+            "No passive language. Make it outcome-driven and confident - "
+            "like someone any company would want to hire."
+        ),
+    },
+    {
+        "title": "Cover letter writer",
+        "text": (
+            "Write me a concise (Under 200), Human-sounding cover letter for this "
+            "role: [Insert job title]. Show excitement, competence and focus on "
+            "the value I bring."
+        ),
+    },
+    {
+        "title": "Interview rehearsal",
+        "text": (
+            "Give me 10 most common behavioral interview questions for a "
+            "[Insert job title] role and answer each one using the STAR format "
+            "with specific, impressive examples"
+        ),
+    },
+]
+
 @router.get("/chat", response_class=HTMLResponse)
 async def chat_interface(request: Request, user=Depends(main.require_login)):
     candidates = [{"id": r["resume_id"], "name": r["name"]} for r in await main.resumes_all()]
@@ -22,7 +74,11 @@ async def chat_interface(request: Request, user=Depends(main.require_login)):
     return await main.render(
         request,
         "chat.html",
-        {"history": safe_history, "candidates": candidates},
+        {
+            "history": safe_history,
+            "candidates": candidates,
+            "quick_prompts": QUICK_PROMPTS,
+        },
         page_title="Chat",
     )
 
@@ -38,9 +94,17 @@ async def chat(request: Request, chat_data: ChatRequest = Body(...), user=Depend
     if not isinstance(history, list):
         history = []
     snippets = []
-    for c in last_proj.get("candidates", []):
-        if not selected_ids or c["name"] in selected_ids:
-            snippets.append(f"**{c['name']}** ({c['fit']} %)\n{c['text'][:600]}…")
+    selected_docs = await main.resumes_by_ids(selected_ids) if selected_ids else []
+    selected_names = {d.metadata["name"] for d in selected_docs}
+
+    cand_data = last_proj.get("candidates", [])
+    if cand_data:
+        for c in cand_data:
+            if not selected_names or c["name"] in selected_names:
+                snippets.append(f"**{c['name']}** ({c['fit']} %)\n{c['text'][:600]}…")
+    else:
+        for d in selected_docs:
+            snippets.append(f"**{d.metadata['name']}**\n{d.metadata['text'][:600]}…")
     system_blocks = []
     if desc := last_proj.get("description"):
         system_blocks.append(f"### Project\n{desc}")
@@ -111,7 +175,11 @@ async def chat_action(
     return await main.render(
         request,
         "chat.html",
-        {"reply": safe_reply, "candidates": candidates},
+        {
+            "reply": safe_reply,
+            "candidates": candidates,
+            "quick_prompts": QUICK_PROMPTS,
+        },
         page_title="Chat",
     )
 

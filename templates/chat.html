@@ -35,10 +35,19 @@
         </div>
       </div>
       {% endfor %}
-    </div>
+      </div>
 
-    {# input row #}
-    <div class="border-t bg-white/70 backdrop-blur p-4 flex items-center gap-2">
+      {# quick prompts row #}
+      <div id="quick-prompts" class="border-t bg-white/70 backdrop-blur p-4 flex flex-wrap gap-2">
+        {% for pr in quick_prompts %}
+        <button type="button" class="quick-prompt bg-gray-200 px-2 py-1 rounded" data-text="{{ pr.text }}">
+          {{ pr.title }}
+        </button>
+        {% endfor %}
+      </div>
+
+      {# input row #}
+      <div class="border-t bg-white/70 backdrop-blur p-4 flex items-center gap-2">
       <button id="attach-btn" title="Upload project"
               class="p-2 rounded bg-gray-200">📎</button>
       <input id="project-file" type="file" accept=".pdf,.docx" class="hidden">
@@ -75,6 +84,24 @@ function addBubble(role, html) {
        </div>
      </div>`);
   qs('#chat-box').scrollTop = qs('#chat-box').scrollHeight;
+}
+
+// ── send prompt template ------------------------------------
+async function sendPrompt(raw) {
+  let finalText = raw;
+  if (raw.includes('[Insert job title]')) {
+    const title = prompt('Job title?');
+    if (title === null) return;
+    finalText = raw.replace('[Insert job title]', title);
+  }
+  addBubble('user', finalText);
+  const res = await fetch('/chat', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ text: finalText, candidate_ids: selected() })
+  });
+  const data = await res.json();
+  addBubble('assist', data.reply);
 }
 
 // ── sidebar filter ──────────────────────────────────────────
@@ -114,6 +141,11 @@ qs('#project-file').onchange = async e => {
   addBubble('assist', html);
   e.target.value = '';
 };
+
+// ── quick prompt buttons ------------------------------------
+document.querySelectorAll('#quick-prompts button').forEach(btn => {
+  btn.onclick = () => sendPrompt(btn.dataset.text);
+});
 
 // ── scroll to bottom on initial load ────────────────────────
 window.addEventListener('load', () => {
