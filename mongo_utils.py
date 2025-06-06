@@ -102,13 +102,28 @@ async def get_all_resumes() -> List[dict]:
 async def get_resumes_by_ids(id_list: List[str]):
     if await _guard("get_resumes_by_ids"):
         return []
-    cursor = _resumes.find({"_id": {"$in": [ObjectId(i) for i in id_list]}})
+
+    mongo_ids = [ObjectId(i) for i in id_list if ObjectId.is_valid(i)]
+    resume_ids = [i for i in id_list if not ObjectId.is_valid(i)]
+
+    query_parts = []
+    if mongo_ids:
+        query_parts.append({"_id": {"$in": mongo_ids}})
+    if resume_ids:
+        query_parts.append({"resume_id": {"$in": resume_ids}})
+    if not query_parts:
+        return []
+
+    query = {"$or": query_parts} if len(query_parts) > 1 else query_parts[0]
+
+    cursor = _resumes.find(query)
     docs = await cursor.to_list(None)
     return [
         SimpleNamespace(
             id=doc["resume_id"],
             metadata={"name": doc["name"], "text": doc["text"]},
-        ) for doc in docs
+        )
+        for doc in docs
     ]
 
 async def update_resume(
@@ -252,7 +267,19 @@ async def resumes_page(page: int, per_page: int, filters: dict | None = None):
 async def resumes_by_ids(id_list: List[str]):
     if await _guard("resumes_by_ids"):
         return []
-    cursor = resumes_collection.find({"_id": {"$in": [ObjectId(i) for i in id_list]}})
+    mongo_ids = [ObjectId(i) for i in id_list if ObjectId.is_valid(i)]
+    resume_ids = [i for i in id_list if not ObjectId.is_valid(i)]
+
+    query_parts = []
+    if mongo_ids:
+        query_parts.append({"_id": {"$in": mongo_ids}})
+    if resume_ids:
+        query_parts.append({"resume_id": {"$in": resume_ids}})
+    if not query_parts:
+        return []
+
+    query = {"$or": query_parts} if len(query_parts) > 1 else query_parts[0]
+    cursor = resumes_collection.find(query)
     docs = await cursor.to_list(None)
     return [
         SimpleNamespace(
