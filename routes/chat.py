@@ -6,6 +6,13 @@ from schemas import ChatRequest
 
 router = APIRouter()
 
+# default set of quick prompt templates shown in the chat UI
+QUICK_PROMPTS = [
+    "Rewrite my resume for the [Insert job title] role",
+    "Summarize candidate strengths for a [Insert job title] role",
+    "List key skills for a [Insert job title] role",
+]
+
 @router.get("/chat", response_class=HTMLResponse)
 async def chat_interface(request: Request, user=Depends(main.require_login)):
     candidates = [{"id": r["resume_id"], "name": r["name"]} for r in await main.resumes_all()]
@@ -22,7 +29,11 @@ async def chat_interface(request: Request, user=Depends(main.require_login)):
     return await main.render(
         request,
         "chat.html",
-        {"history": safe_history, "candidates": candidates},
+        {
+            "history": safe_history,
+            "candidates": candidates,
+            "quick_prompts": QUICK_PROMPTS,
+        },
         page_title="Chat",
     )
 
@@ -111,7 +122,11 @@ async def chat_action(
     return await main.render(
         request,
         "chat.html",
-        {"reply": safe_reply, "candidates": candidates},
+        {
+            "reply": safe_reply,
+            "candidates": candidates,
+            "quick_prompts": QUICK_PROMPTS,
+        },
         page_title="Chat",
     )
 
