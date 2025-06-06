@@ -10,7 +10,7 @@
   <title>{{ page_title }} - Recruitment Assistant</title>
 </head>
 
-<body class="font-sans">
+<body>
   {# ------------------------------------------------------------- #
      expect three template variables to be present:
 
@@ -20,55 +20,55 @@
 
      (pass  user=current_user  whenever you call TemplateResponse)
   # ------------------------------------------------------------- #}
-  <header class="fixed top-0 inset-x-0 h-16 bg-white/80 backdrop-blur-md shadow-md flex items-center justify-between px-8">
-    <span class="font-semibold text-indigo-600">Recruitment Assistant</span>
+  <header class="fixed top-0 inset-x-0 h-16 flex items-center justify-between px-8 shadow-sm">
+    <span class="font-semibold" style="color: var(--color-accent);">Recruitment Assistant</span>
 
     <nav class="space-x-6 text-sm">
       {# regular links #}
       <a href="/"
-         class="{{ 'text-indigo-600 font-semibold' if active=='/' else
-                  'text-gray-700 hover:text-indigo-600' }}">Home</a>
+         class="{{ 'font-semibold underline' if active=='/' else 'hover:underline' }}"
+         style="color: var(--color-accent);">Home</a>
 
       <a href="/resumes"
-         class="{{ 'text-indigo-600 font-semibold' if active=='/resumes' else
-                  'text-gray-700 hover:text-indigo-600' }}">Résumés</a>
+         class="{{ 'font-semibold underline' if active=='/resumes' else 'hover:underline' }}"
+         style="color: var(--color-accent);">Résumés</a>
 
       <a href="/chat"
-         class="{{ 'text-indigo-600 font-semibold' if active=='/chat' else
-                  'text-gray-700 hover:text-indigo-600' }}">Chat</a>
+         class="{{ 'font-semibold underline' if active=='/chat' else 'hover:underline' }}"
+         style="color: var(--color-accent);">Chat</a>
 
       <a href="/projects"
-         class="{{ 'text-indigo-600 font-semibold' if active=='/projects' else
-                  'text-gray-700 hover:text-indigo-600' }}">Projects</a>
+         class="{{ 'font-semibold underline' if active=='/projects' else 'hover:underline' }}"
+         style="color: var(--color-accent);">Projects</a>
 
       {# profile for *any* logged-in user #}
       {% if user %}
         <a href="/profile"
-           class="{{ 'text-indigo-600 font-semibold' if active=='/profile' else
-                    'text-gray-700 hover:text-indigo-600' }}">Profile</a>
+           class="{{ 'font-semibold underline' if active=='/profile' else 'hover:underline' }}"
+           style="color: var(--color-accent);">Profile</a>
       {% endif %}
 
       {# owner-only admin page #}
       {% if user and user.role == 'owner' %}
         <a href="/admin/users"
-           class="{{ 'text-indigo-600 font-semibold' if active=='/admin/users' else
-                    'text-gray-700 hover:text-indigo-600' }}">Users</a>
+           class="{{ 'font-semibold underline' if active=='/admin/users' else 'hover:underline' }}"
+           style="color: var(--color-accent);">Users</a>
       {% endif %}
 
       {# login / logout #}
       {% if user %}
-        <a href="/logout" class="text-gray-700 hover:text-indigo-600">Logout</a>
+        <a href="/logout" class="hover:underline" style="color: var(--color-accent);">Logout</a>
       {% else %}
         <a href="/login"
-           class="{{ 'text-indigo-600 font-semibold' if active=='/login' else
-                    'text-gray-700 hover:text-indigo-600' }}">Login</a>
+           class="{{ 'font-semibold underline' if active=='/login' else 'hover:underline' }}"
+           style="color: var(--color-accent);">Login</a>
       {% endif %}
     </nav>
   </header>
 
   <main class="pt-20 p-6">
     {% if page_title %}
-      <h1 class="text-2xl font-semibold px-6 mb-4">{{ page_title }}</h1>
+      <h1 class="px-6 mb-4">{{ page_title }}</h1>
     {% endif %}
     {% block body %}{% endblock %}
   </main>

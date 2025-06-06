@@ -3,19 +3,21 @@
 {% set active = "/profile" %}
 
 {% block body %}
-<div class="max-w-lg mx-auto bg-white/70 backdrop-blur p-6 rounded-xl shadow">
-<h2 class="text-2xl font-semibold mb-6">My profile</h2>
+<div class="mx-auto card" style="max-width:400px; margin-top:24px;">
+<h2>My profile</h2>
 
 <p><strong>Username:</strong> {{ user.username }}</p>
 <p><strong>Role:</strong> {{ user.role }}</p>
 
-<h3 class="text-lg font-medium mt-8 mb-2">Change password</h3>
-<form action="/profile/password" method="post" class="space-y-2 max-w-xs">
-  <input name="old" type="password" placeholder="Current password"
-         class="border w-full px-3 py-2 rounded" required>
-  <input name="new" type="password" placeholder="New password"
-         class="border w-full px-3 py-2 rounded" required>
-  <button class="px-4 py-2 bg-blue-600 text-white rounded w-full">Update</button>
+<h3 class="mt-8 mb-2">Change password</h3>
+<form action="/profile/password" method="post" class="space-y-2">
+  <label class="block">Current password
+    <input name="old" type="password" class="w-full" required>
+  </label>
+  <label class="block">New password
+    <input name="new" type="password" class="w-full" required>
+  </label>
+  <button class="btn w-full" style="margin-top:16px;">Update</button>
 </form>
 {% if request.query_params.get('ok') %}
 <p class="text-green-600 mt-2">✅ Password updated</p>

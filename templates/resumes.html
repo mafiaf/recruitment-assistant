@@ -3,28 +3,39 @@
 {% set page_title = "Résumés" %}
 
 {% block body %}
-<div class="pt-6 max-w-6xl mx-auto bg-white/70 backdrop-blur p-6 rounded-xl shadow">
+<div class="max-w-6xl mx-auto card">
 
   <!-- search box -->
-  <input id="search" type="text" placeholder="Search…"
-         class="mb-4 w-64 px-3 py-2 border rounded">
+  <div class="mb-4">
+    <label for="search" class="block mb-1">Search</label>
+    <input id="search" type="text" class="w-64">
+  </div>
 
   <!-- server-side filters -->
-  <form method="get" class="mb-4 space-x-2 text-sm">
-    <input name="skill" placeholder="Skill" value="{{ skill }}"
-           class="px-2 py-1 border rounded">
-    <input name="location" placeholder="Location" value="{{ location }}"
-           class="px-2 py-1 border rounded">
-    <input name="min_years" type="number" placeholder="Min years"
-           value="{{ min_years }}" class="w-24 px-2 py-1 border rounded">
-    <input name="max_years" type="number" placeholder="Max years"
-           value="{{ max_years }}" class="w-24 px-2 py-1 border rounded">
-    <button class="px-2 py-1 bg-indigo-600 text-white rounded">Filter</button>
+  <form method="get" class="mb-4 grid grid-cols-2 gap-2 text-sm max-w-md">
+    <div>
+      <label class="block mb-1">Skill</label>
+      <input name="skill" value="{{ skill }}">
+    </div>
+    <div>
+      <label class="block mb-1">Location</label>
+      <input name="location" value="{{ location }}">
+    </div>
+    <div>
+      <label class="block mb-1">Min years</label>
+      <input name="min_years" type="number" value="{{ min_years }}" class="w-full">
+    </div>
+    <div>
+      <label class="block mb-1">Max years</label>
+      <input name="max_years" type="number" value="{{ max_years }}" class="w-full">
+    </div>
+    <div class="col-span-2">
+      <button class="btn w-full">Filter</button>
+    </div>
   </form>
 
   <!-- résumé table -->
-  <table id="cv-table"
-         class="w-full text-sm border rounded-xl overflow-hidden shadow">
+  <table id="cv-table" class="w-full text-sm">
     <thead>
       <tr class="bg-gray-100 text-left">
         <th class="px-4 py-2">Name</th>
@@ -34,14 +45,14 @@
     </thead>
     <tbody>
       {% for r in resumes %}
-      <tr class="odd:bg-white even:bg-gray-50">
-        <td class="px-4 py-2">{{ r.name }}</td>
-        <td class="px-2 py-2">{{ r.added|default('—') }}</td>
-        <td class="px-2 py-2 space-x-3 text-sm">
+      <tr class="odd:bg-white even:bg-gray-50 h-12">
+        <td class="px-4 font-bold">{{ r.name }}</td>
+        <td class="px-2">{{ r.added|default('—') }}</td>
+        <td class="px-2 space-x-2 text-sm">
 
         <!-- preview → uses <details>   (no form, just HTML) -->
         <details class="inline">
-          <summary class="cursor-pointer text-blue-600 hover:underline">preview</summary>
+          <summary class="cursor-pointer hover:underline" style="color: var(--color-accent);">preview</summary>
           <pre class="p-2 bg-gray-100 max-h-60 overflow-auto whitespace-pre-wrap text-xs">
             {{ r.text[:1500] }}{% if r.text|length > 1500 %}…{% endif %}
           </pre>
@@ -51,17 +62,13 @@
         <form action="/edit_resume" method="get" class="inline">
           <input type="hidden" name="id" value="{{ r.id }}">
           <!--  ✦ add type="submit" so only this form fires  -->
-          <button type="submit" class="text-yellow-600 hover:underline">edit</button>
+          <button type="submit" title="Edit">✏️</button>
         </form>
 
         <!-- DELETE (= POST /delete_resume) -->
         <form action="/delete_resume" method="post" class="inline">
           <input type="hidden" name="id" value="{{ r.id }}">
-          <button type="submit"
-                  class="text-red-600 hover:underline"
-                  onclick="return confirm('Delete résumé?')">
-            delete
-          </button>
+          <button type="submit" title="Delete" onclick="return confirm('Delete résumé?')">🗑️</button>
         </form>
 
       </td>

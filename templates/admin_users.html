@@ -3,10 +3,10 @@
 {% set active = "/admin/users" %}
 
 {% block body %}
-<div class="max-w-5xl mx-auto bg-white/70 backdrop-blur p-6 rounded-xl shadow">
-<h2 class="text-2xl font-semibold mb-6">Users</h2>
+<div class="max-w-5xl mx-auto card">
+<h2>Users</h2>
 
-<table class="w-full text-sm border rounded-xl overflow-hidden shadow">
+<table class="w-full text-sm">
   <thead>
     <tr class="bg-gray-100 text-left">
       <th class="px-4 py-2">Username</th>
@@ -16,33 +16,39 @@
   </thead>
   <tbody>
     {% for u in users %}
-    <tr class="odd:bg-white even:bg-gray-50">
-      <td class="px-4 py-2">{{ u.username }}</td>
-      <td class="px-2 py-2">{{ u.role }}</td>
-      <td class="px-2 py-2 space-x-3 text-sm">
+    <tr class="odd:bg-white even:bg-gray-50 h-12">
+      <td class="px-4 text-base">{{ u.username }}</td>
+      <td class="px-2">{{ u.role }}</td>
+      <td class="px-2 space-x-2 text-sm">
         <form action="/admin/users/delete"
               method="post"
               class="inline"
               onsubmit="return confirm('Delete user &ldquo;{{ u.username }}&rdquo;?');">
           <input type="hidden" name="username" value="{{ u.username }}">
-          <button class="text-red-600 hover:underline">delete</button>
+          <button title="Delete user">🗑️</button>
         </form>
-        <a href="/admin/users/{{ u.username }}/edit" class="text-blue-600 hover:underline">edit</a>
+        <a href="/admin/users/{{ u.username }}/edit" title="Edit user">✏️</a>
       </td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
 
-<h3 class="text-lg font-medium mt-8 mb-2">Add new user</h3>
-<form action="/admin/users" method="post" class="space-x-2">
-  <input name="username" placeholder="username" class="border px-2 py-1 rounded" required>
-  <input name="password" type="password" placeholder="password" class="border px-2 py-1 rounded" required>
-  <select name="role" class="border px-2 py-1 rounded">
-    <option value="user">user</option>
-    <option value="owner">owner</option>
+<h3 class="mt-8 mb-2">Add new user</h3>
+<form action="/admin/users" method="post" class="space-y-2 max-w-xs">
+  <label class="block">Username
+    <input name="username" class="w-full" required>
+  </label>
+  <label class="block">Password
+    <input name="password" type="password" class="w-full" required>
+  </label>
+  <label class="block">Role
+    <select name="role" class="w-full">
+      <option value="user">user</option>
+      <option value="owner">owner</option>
   </select>
-  <button class="px-4 py-1 bg-blue-600 text-white rounded">create</button>
+  </label>
+  <button class="btn w-full">Create</button>
 </form>
 </div>
 {% endblock %}

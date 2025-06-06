@@ -6,15 +6,15 @@
 <div class="space-y-4">
   {% if projects %}
     {% for p in projects %}
-      <details class="bg-white/70 backdrop-blur p-4 rounded shadow">
+      <details class="card">
         <summary class="cursor-pointer flex justify-between items-center">
           <span>{{ p.description|truncate(80, True, '…') }}</span>
           <form action="/delete_project" method="post" class="inline" onclick="event.stopPropagation();">
             <input type="hidden" name="ts" value="{{ p.ts.isoformat() }}">
-            <button type="submit" class="text-red-600 text-xs hover:underline" onclick="return confirm('Delete project?')">delete</button>
+            <button type="submit" title="Delete" onclick="return confirm('Delete project?')">🗑️</button>
           </form>
         </summary>
-        <div class="mt-2 text-sm whitespace-pre-wrap">{{ p.description }}</div>
+        <div class="mt-2 text-sm text-[var(--color-text-light)]">{{ p.description }}</div>
         <div class="overflow-auto">{{ p.table_html | safe }}</div>
       </details>
     {% endfor %}
