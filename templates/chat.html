@@ -38,20 +38,30 @@
       </div>
 
       {# quick prompts row #}
-      <div id="quick-prompts" class="border-t bg-white/70 backdrop-blur p-4 flex flex-wrap gap-2">
+      <div id="quick-prompts" class="border-t bg-white/70 dark:bg-slate-700/70 backdrop-blur p-4 flex flex-wrap gap-2">
         {% for pr in quick_prompts %}
 
-        <button type="button" class="quick-prompt bg-gray-200 px-2 py-1 rounded" data-text="{{ pr.text }}">
+        <button type="button" class="quick-prompt chip cursor-pointer" data-text="{{ pr.text }}">
           {{ pr.title }}
 
         </button>
         {% endfor %}
       </div>
 
+      {# chat mode toggle #}
+      <div class="border-t bg-white/70 dark:bg-slate-700/70 backdrop-blur p-4 flex items-center gap-2 text-sm">
+        <label for="chat-mode" class="font-medium">Chat mode:</label>
+        <select id="chat-mode" class="border rounded px-2 py-1">
+          <option value="general">General AI</option>
+          <option value="ats">ATS Assistant</option>
+          <option value="role">Role-based Guidance</option>
+        </select>
+      </div>
+
       {# input row #}
-      <div class="border-t bg-white/70 backdrop-blur p-4 flex items-center gap-2">
+      <div class="border-t bg-white/70 dark:bg-slate-700/70 backdrop-blur p-4 flex items-center gap-2">
       <button id="attach-btn" title="Upload project"
-              class="p-2 rounded bg-gray-200">📎</button>
+              class="p-2 rounded bg-gray-200 dark:bg-slate-600 dark:text-white">📎</button>
       <input id="project-file" type="file" accept=".pdf,.docx" class="hidden">
       <input id="chat-input" type="text"
              placeholder="Type a message…"
@@ -68,6 +78,8 @@
 {% block extra_js %}
 <script>
 const qs = s => document.querySelector(s);
+const modeSel = () => qs('#chat-mode');
+let typingDiv = null;
 
 // ── helper: currently-selected candidate IDs ────────────────
 function selected() {
@@ -83,9 +95,29 @@ function addBubble(role, html) {
     `<div class="max-w-prose ${align}">
        <div class="rounded-xl px-4 py-2 ${bg} whitespace-pre-wrap">
          <strong>${role === 'user' ? 'You' : 'Assistant'}:</strong> ${html}
+         ${role === 'assist' ? '<div class="text-xs mt-1"><span class="feedback">👍</span> <span class="feedback">👎</span></div>' : ''}
        </div>
      </div>`);
   qs('#chat-box').scrollTop = qs('#chat-box').scrollHeight;
+}
+
+function showTyping() {
+  hideTyping();
+  typingDiv = document.createElement('div');
+  typingDiv.className = 'max-w-prose';
+  typingDiv.innerHTML = `
+    <div class="rounded-xl px-4 py-2 bg-rose-100">
+      <div class="typing-indicator"><span></span><span></span><span></span></div>
+    </div>`;
+  qs('#chat-box').appendChild(typingDiv);
+  qs('#chat-box').scrollTop = qs('#chat-box').scrollHeight;
+}
+
+function hideTyping() {
+  if (typingDiv) {
+    typingDiv.remove();
+    typingDiv = null;
+  }
 }
 
 // ── send prompt template ------------------------------------
@@ -97,12 +129,14 @@ async function sendPrompt(raw) {
     finalText = raw.replace('[Insert job title]', title);
   }
   addBubble('user', finalText);
+  showTyping();
   const res = await fetch('/chat', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ text: finalText, candidate_ids: selected() })
+    body: JSON.stringify({ text: finalText, candidate_ids: selected(), mode: modeSel().value })
   });
   const data = await res.json();
+  hideTyping();
   addBubble('assist', data.reply);
 }
 
@@ -121,12 +155,15 @@ qs('#send-btn').onclick = async () => {
   qs('#chat-input').value = '';
   addBubble('user', txt);
 
+  showTyping();
+
   const res = await fetch('/chat', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ text: txt, candidate_ids: selected() })
+    body: JSON.stringify({ text: txt, candidate_ids: selected(), mode: modeSel().value })
   });
   const data = await res.json();
+  hideTyping();
   addBubble('assist', data.reply);
 };
 
@@ -139,7 +176,9 @@ qs('#project-file').onchange = async e => {
   fd.append('file', f);
   selected().forEach(id => fd.append('candidate_ids', id));
   addBubble('user', '[uploaded project]');
+  showTyping();
   const html = await (await fetch('/match_project', {method: 'POST', body: fd})).text();
+  hideTyping();
   addBubble('assist', html);
   e.target.value = '';
 };
@@ -147,6 +186,12 @@ qs('#project-file').onchange = async e => {
 // ── quick prompt buttons ------------------------------------
 document.querySelectorAll('#quick-prompts button').forEach(btn => {
   btn.onclick = () => sendPrompt(btn.dataset.text);
+});
+
+document.addEventListener('click', e => {
+  if(e.target.classList.contains('feedback')) {
+    e.target.style.opacity = '1';
+  }
 });
 
 // ── scroll to bottom on initial load ────────────────────────
