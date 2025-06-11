@@ -44,9 +44,26 @@ input, textarea, select {
 body.dark input,
 body.dark textarea,
 body.dark select {
-  background-color: #1e293b;
-  color: #f1f5f9;
-  border-color: #475569;
+  background-color: #2d2d2d;
+  color: #eaeaea;
+  border-color: #444;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #6b7280;
+}
+body.dark input::placeholder,
+body.dark textarea::placeholder {
+  color: #bbb;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 5px rgba(99, 102, 241, 0.5);
 }
 #resume-form.drag-over {
   box-shadow: 0 0 0 4px rgba(59,130,246,0.4);
@@ -280,6 +297,13 @@ body.dark .chat-input-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  border-bottom: 1px solid #d1d5db;
+  padding-bottom: 0.5rem;
+}
+
+.dark .section-title {
+  color: #fff;
+  border-color: #374151;
 }
 
 .form-grid {
@@ -302,19 +326,26 @@ button:disabled {
 
 .role-badge {
   display: inline-block;
-  padding: 0.125rem 0.5rem;
+  padding: 2px 8px;
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: capitalize;
+  background: #6b7280;
+  color: #fff;
 }
 
 .role-badge.owner {
-  background: #c7d2fe;
-  color: #3730a3;
+  background: #6366f1;
+  color: #fff;
 }
 
 .role-badge.user {
-  background: #bbf7d0;
-  color: #065f46;
+  background: #22c55e;
+  color: #fff;
+}
+
+.role-badge.admin {
+  background: #ef4444;
+  color: #fff;
 }
