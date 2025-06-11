@@ -6,24 +6,23 @@
 {% block body %}
 <div class="max-w-5xl mx-auto flex flex-col gap-8">
   <p class="text-lg font-semibold">Welcome back, {{ user.username }}!</p>
-  <form id="resume-form" class="border-4 border-dashed border-indigo-300 rounded-3xl p-16 text-center bg-white/50 backdrop-blur-lg cursor-pointer transition-all" autocomplete="off">
+  <form id="resume-form" class="border-4 border-dashed border-indigo-300 rounded-3xl p-16 text-center bg-white/50 backdrop-blur-lg cursor-pointer transition-all relative" autocomplete="off">
     <input id="resume-file" type="file" name="files" accept=".pdf,.docx" multiple class="hidden">
-    <div class="text-5xl text-indigo-400 mb-4"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+    <div class="text-5xl text-indigo-400 mb-4 cloud-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
     <p class="text-lg font-medium">Drop your résumé here<br>or click to browse files</p>
+    <div id="upload-preview" class="mt-6 space-y-2 text-left"></div>
   </form>
 
-  <div id="upload-progress" class="w-full max-w-xl"></div>
-
   <section>
-    <h2 class="text-xl font-semibold mb-2">Your Recent Uploads</h2>
+    <h2 class="text-xl font-bold mb-4">Your Recent Uploads</h2>
     <div class="upload-grid grid gap-4 pb-4">
       {% for r in resumes %}
-      <div class="card animate-pop">
-        <div class="flex items-center justify-between mb-3">
-          <span class="font-semibold text-sm">{{ r.name }}</span>
+      <div class="card animate-pop flex flex-col">
+        <div class="flex items-start justify-between mb-2">
+          <span class="font-bold text-base">{{ r.name }}</span>
           <span class="text-xs text-gray-500">{{ r.added|default('—') }}</span>
         </div>
-        <div class="flex gap-3 text-sm">
+        <div class="mt-auto flex justify-end gap-3 text-sm opacity-90 hover:opacity-100">
           <a href="/resumes#{{ r.id }}" class="text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1"><i class="fa-solid fa-pen"></i>Edit</a>
           <form action="/delete_resume" method="post" class="inline">
             <input type="hidden" name="id" value="{{ r.id }}">
@@ -46,7 +45,7 @@ fileInput.onchange = () => { if (fileInput.files.length) uploadFiles(fileInput.f
 ['dragenter','dragover'].forEach(evt => dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.add('drag-over'); }));
 ['dragleave','drop'].forEach(evt => dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.remove('drag-over'); }));
 dropZone.addEventListener('drop', e => { if (e.dataTransfer.files.length){ uploadFiles(e.dataTransfer.files); }});
-const progressBox = document.getElementById('upload-progress');
+const progressBox = document.getElementById('upload-preview');
 function createBar(name){
   const wrapper = document.createElement('div');
   wrapper.className = 'my-2';
