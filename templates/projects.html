@@ -19,11 +19,11 @@
       <div class="text-xs flex flex-wrap gap-1 mb-2">
         {% for c in p.candidates %}<span class="chip">{{ c.name }}</span>{% endfor %}
       </div>
-      <details class="mb-2">
-        <summary class="cursor-pointer text-blue-600 hover:underline flex items-center gap-1"><i class="fa-solid fa-eye"></i>View details</summary>
+      <button type="button" class="open-details text-blue-600 hover:underline flex items-center gap-1 mb-2"><i class="fa-solid fa-eye"></i>View details</button>
+      <div class="hidden full-details">
         <div class="mt-2 whitespace-pre-wrap">{{ p.description }}</div>
         <div class="overflow-auto">{{ p.table_html | safe }}</div>
-      </details>
+      </div>
       <div class="actions mt-auto flex justify-end gap-3 text-sm">
         <a href="/edit_project?ts={{ p.ts.isoformat() }}" class="text-blue-600 hover:text-blue-800 flex items-center gap-1"><i class="fa-solid fa-pen"></i>Edit</a>
         <form action="/delete_project" method="post" class="delete-form inline">
@@ -47,6 +47,11 @@
       <a href="/projects?page={{ next_page }}" class="text-blue-600 hover:underline">Next &raquo;</a>
     {% else %}<span></span>{% endif %}
   </div>
+
+  <dialog id="project-modal" class="rounded-lg p-6 shadow-xl bg-white dark:bg-slate-800 max-w-4xl w-[90vw] max-h-[90vh] overflow-auto">
+    <button type="button" id="close-modal" class="text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white absolute top-2 right-2"><i class="fa-solid fa-xmark"></i></button>
+    <div id="modal-body" class="prose dark:prose-invert"></div>
+  </dialog>
 </div>
 {% endblock %}
 
@@ -67,5 +72,17 @@ document.querySelectorAll('.delete-form').forEach(f => {
     if(!confirm('Delete project?')) e.preventDefault();
   });
 });
+
+const modal = document.getElementById('project-modal');
+const modalBody = document.getElementById('modal-body');
+document.querySelectorAll('.open-details').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const card = btn.closest('.card');
+    modalBody.innerHTML = card.querySelector('.full-details').innerHTML;
+    modal.showModal();
+  });
+});
+document.getElementById('close-modal').addEventListener('click', () => modal.close());
+modal.addEventListener('click', e => { if(e.target === modal) modal.close(); });
 </script>
 {% endblock %}
