@@ -271,3 +271,50 @@ body.dark .chat-input-row {
 #project-modal::backdrop {
   background: rgba(0,0,0,0.6);
 }
+
+/* user admin extras */
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 20rem;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.role-badge.owner {
+  background: #c7d2fe;
+  color: #3730a3;
+}
+
+.role-badge.user {
+  background: #bbf7d0;
+  color: #065f46;
+}
