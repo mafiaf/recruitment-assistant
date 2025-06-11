@@ -3,46 +3,101 @@
 {% set active = "/admin/users" %}
 
 {% block body %}
-<div class="max-w-5xl mx-auto bg-white/70 backdrop-blur p-6 rounded-xl shadow">
-<h2 class="text-2xl font-semibold mb-6">Users</h2>
+<div class="max-w-5xl mx-auto bg-white/70 backdrop-blur p-6 rounded-xl shadow space-y-8">
+  <div>
+    <h2 class="section-title">👥 Existing Users</h2>
 
-<table class="w-full text-sm border rounded-xl overflow-hidden shadow">
-  <thead>
-    <tr class="bg-gray-100 text-left">
-      <th class="px-4 py-2">Username</th>
-      <th class="px-2 py-2">Role</th>
-      <th class="px-2 py-2">Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for u in users %}
-    <tr class="odd:bg-white even:bg-gray-50">
-      <td class="px-4 py-2">{{ u.username }}</td>
-      <td class="px-2 py-2">{{ u.role }}</td>
-      <td class="px-2 py-2 space-x-3 text-sm">
-        <form action="/admin/users/delete"
-              method="post"
-              class="inline"
-              onsubmit="return confirm('Delete user &ldquo;{{ u.username }}&rdquo;?');">
-          <input type="hidden" name="username" value="{{ u.username }}">
-          <button class="text-red-600 hover:underline">delete</button>
-        </form>
-        <a href="/admin/users/{{ u.username }}/edit" class="text-blue-600 hover:underline">edit</a>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+    <table class="w-full text-sm border rounded-xl overflow-hidden shadow">
+      <thead>
+        <tr class="bg-gray-100 text-left">
+          <th class="px-4 py-2">Username</th>
+          <th class="px-2 py-2">Role</th>
+          <th class="px-2 py-2">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr class="odd:bg-white even:bg-gray-50">
+          <td class="px-4 py-2">{{ u.username }}</td>
+          <td class="px-2 py-2"><span class="role-badge {{ u.role }}">{{ u.role }}</span></td>
+          <td class="px-2 py-2 space-x-3 text-sm">
+            <form action="/admin/users/delete" method="post" class="inline delete-user-form">
+              <input type="hidden" name="username" value="{{ u.username }}">
+              <button class="icon-btn text-red-600 hover:text-red-800"><i class="fa-solid fa-trash"></i>Delete</button>
+            </form>
+            <a href="/admin/users/{{ u.username }}/edit" class="icon-btn text-blue-600 hover:text-blue-800"><i class="fa-solid fa-pen"></i>Edit</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 
-<h3 class="text-lg font-medium mt-8 mb-2">Add new user</h3>
-<form action="/admin/users" method="post" class="space-x-2">
-  <input name="username" placeholder="username" class="border px-2 py-1 rounded" required>
-  <input name="password" type="password" placeholder="password" class="border px-2 py-1 rounded" required>
-  <select name="role" class="border px-2 py-1 rounded">
-    <option value="user">user</option>
-    <option value="owner">owner</option>
-  </select>
-  <button class="px-4 py-1 bg-blue-600 text-white rounded">create</button>
-</form>
+  <div>
+    <h2 class="section-title">➕ Add New User</h2>
+    <form id="create-user-form" action="/admin/users" method="post" class="form-grid">
+      <input name="username" placeholder="Username" class="border px-2 py-1 rounded" required>
+      <input name="password" type="password" placeholder="Password" class="border px-2 py-1 rounded" required>
+      <select name="role" class="border px-2 py-1 rounded">
+        <option value="user">user</option>
+        <option value="owner">owner</option>
+      </select>
+      <button class="px-4 py-1 bg-blue-600 text-white rounded" disabled>Create</button>
+      <p id="form-msg" class="text-sm"></p>
+    </form>
+  </div>
+
+  <dialog id="confirm-delete" class="rounded-lg p-6 shadow-xl bg-white dark:bg-slate-800 w-80">
+    <p>Delete user <span id="del-name" class="font-semibold"></span>?</p>
+    <div class="mt-4 text-right space-x-2">
+      <button type="button" id="cancel-del" class="px-3 py-1 rounded bg-gray-200">Cancel</button>
+      <form id="del-form" action="/admin/users/delete" method="post" class="inline">
+        <input type="hidden" name="username" id="del-user">
+        <button class="px-3 py-1 bg-red-600 text-white rounded">Delete</button>
+      </form>
+    </div>
+  </dialog>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const form = document.getElementById('create-user-form');
+const msg  = document.getElementById('form-msg');
+const btn  = form.querySelector('button');
+const uname = form.querySelector('input[name="username"]');
+const pass  = form.querySelector('input[name="password"]');
+function check(){
+  btn.disabled = !uname.value.trim() || pass.value.length < 6;
+}
+uname.oninput = pass.oninput = check;
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  const fd = new FormData(form);
+  const res = await fetch('/admin/users', {method:'POST', body: fd});
+  if(res.ok){
+    msg.className = 'text-green-600 text-sm';
+    msg.textContent = 'User created successfully';
+    setTimeout(()=>location.reload(), 700);
+  }else{
+    const data = await res.json().catch(()=>({detail:'Error'}));
+    msg.className = 'text-red-600 text-sm';
+    msg.textContent = data.detail || 'Error';
+  }
+});
+check();
+
+const dialog = document.getElementById('confirm-delete');
+document.querySelectorAll('.delete-user-form').forEach(f => {
+  f.addEventListener('submit', e => {
+    e.preventDefault();
+    const name = f.querySelector('input[name="username"]').value;
+    document.getElementById('del-name').textContent = name;
+    document.getElementById('del-user').value = name;
+    dialog.showModal();
+  });
+});
+document.getElementById('cancel-del').onclick = () => dialog.close();
+dialog.addEventListener('click', e => { if(e.target===dialog) dialog.close(); });
+</script>
 {% endblock %}
