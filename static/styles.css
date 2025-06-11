@@ -68,12 +68,15 @@ body.dark select {
 /* grid layout for recent uploads */
 .upload-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+
   grid-auto-rows: auto;
 }
 
 .upload-grid .card {
-  min-height: 6rem;
+  min-height: 7rem;
+
 }
 
 body.dark aside {
