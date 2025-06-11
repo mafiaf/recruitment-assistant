@@ -74,7 +74,15 @@ QUICK_PROMPTS = [
 
 @router.get("/chat", response_class=HTMLResponse)
 async def chat_interface(request: Request, user=Depends(main.require_login)):
-    candidates = [{"id": r["resume_id"], "name": r["name"]} for r in await main.resumes_all()]
+    candidates = [
+        {
+            "id": r.get("resume_id"),
+            "name": r.get("name"),
+            "location": r.get("location", ""),
+            "skills": r.get("skills", [])[:3],
+        }
+        for r in await main.resumes_all()
+    ]
     session_user = await main.get_current_user(request.cookies.get(main.COOKIE_NAME))
     user_id = session_user["username"] if session_user else "anon"
     doc = await main.chat_find_one({"user_id": user_id}) or {}
