@@ -3,97 +3,76 @@
 {% set page_title = "Résumés" %}
 
 {% block body %}
-<div class="pt-6 max-w-6xl mx-auto bg-white/70 backdrop-blur p-6 rounded-xl shadow">
+<div class="max-w-6xl mx-auto space-y-6">
+  <input id="search" type="text" placeholder="Search…" class="w-full sm:w-80 px-3 py-2 border rounded shadow-sm">
 
-  <!-- search box -->
-  <input id="search" type="text" placeholder="Search…"
-         class="mb-4 w-64 px-3 py-2 border rounded">
+  <details class="bg-white/70 backdrop-blur p-4 rounded shadow-sm" {% if skill or location or min_years or max_years %}open{% endif %}>
+    <summary class="sm:hidden cursor-pointer font-medium mb-2">Filters</summary>
+    <form method="get" class="filter-bar">
+      <input name="skill" value="{{ skill }}" placeholder="Skill" class="ghost-input">
+      <input name="location" value="{{ location }}" placeholder="Location" class="ghost-input">
+      <input name="min_years" type="number" value="{{ min_years }}" placeholder="Min years" class="ghost-input w-24">
+      <input name="max_years" type="number" value="{{ max_years }}" placeholder="Max years" class="ghost-input w-24">
+      <button class="px-3 py-2 bg-indigo-600 text-white rounded">Apply</button>
+    </form>
+    <div class="mt-2 flex flex-wrap gap-2 text-sm">
+      {% if skill %}<a href="/resumes?{{ rm_skill }}" class="chip">Skill: {{ skill }} <i class="fa-solid fa-xmark"></i></a>{% endif %}
+      {% if location %}<a href="/resumes?{{ rm_location }}" class="chip">Location: {{ location }} <i class="fa-solid fa-xmark"></i></a>{% endif %}
+      {% if min_years %}<a href="/resumes?{{ rm_min_years }}" class="chip">Min: {{ min_years }} <i class="fa-solid fa-xmark"></i></a>{% endif %}
+      {% if max_years %}<a href="/resumes?{{ rm_max_years }}" class="chip">Max: {{ max_years }} <i class="fa-solid fa-xmark"></i></a>{% endif %}
+    </div>
+  </details>
 
-  <!-- server-side filters -->
-  <form method="get" class="mb-4 space-x-2 text-sm">
-    <input name="skill" placeholder="Skill" value="{{ skill }}"
-           class="px-2 py-1 border rounded">
-    <input name="location" placeholder="Location" value="{{ location }}"
-           class="px-2 py-1 border rounded">
-    <input name="min_years" type="number" placeholder="Min years"
-           value="{{ min_years }}" class="w-24 px-2 py-1 border rounded">
-    <input name="max_years" type="number" placeholder="Max years"
-           value="{{ max_years }}" class="w-24 px-2 py-1 border rounded">
-    <button class="px-2 py-1 bg-indigo-600 text-white rounded">Filter</button>
-  </form>
-
-  <!-- résumé table -->
-  <table id="cv-table"
-         class="w-full text-sm border rounded-xl overflow-hidden shadow">
-    <thead>
-      <tr class="bg-gray-100 text-left">
-        <th class="px-4 py-2">Name</th>
-        <th class="px-2 py-2">Added</th>
-        <th class="px-2 py-2">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for r in resumes %}
-      <tr class="odd:bg-white even:bg-gray-50">
-        <td class="px-4 py-2">{{ r.name }}</td>
-        <td class="px-2 py-2 date-label">{{ r.added|default('—') }}</td>
-        <td class="px-2 py-2 space-x-3 text-sm">
-
-        <!-- preview → uses <details>   (no form, just HTML) -->
-        <details class="inline">
+  <div class="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+    {% for r in resumes %}
+    <div class="card flex flex-col" id="cv-card-{{ r.id }}">
+      <div class="flex justify-between items-start mb-2">
+        <span class="card-title">{{ r.name }}</span>
+        <span class="date-label">{{ r.added|default('—') }}</span>
+      </div>
+      <div class="text-xs flex flex-wrap gap-1 mb-2">
+        {% if r.location %}<span class="chip">{{ r.location }}</span>{% endif %}
+        {% for s in r.skills %}<span class="chip">{{ s }}</span>{% endfor %}
+        {% for t in r.tags %}<span class="chip">{{ t }}</span>{% endfor %}
+      </div>
+      <div class="text-xs text-gray-600 dark:text-gray-400 mb-2">
+        {{ r.file_type|upper }}{% if r.years is not none %} · {{ r.years }} yrs{% endif %}
+      </div>
+      <div class="actions mt-auto flex justify-end gap-3 text-sm">
+        <a href="/edit_resume?id={{ r.id }}" class="text-blue-600 hover:text-blue-800 flex items-center gap-1"><i class="fa-solid fa-pen"></i>Edit</a>
+        <form action="/delete_resume" method="post" class="delete-form inline">
+          <input type="hidden" name="id" value="{{ r.id }}">
+          <button class="text-red-600 hover:text-red-800 flex items-center gap-1"><i class="fa-solid fa-trash"></i>Delete</button>
+        </form>
+        <details class="inline ml-auto">
           <summary class="cursor-pointer text-blue-600 hover:underline">preview</summary>
-          <pre class="p-2 bg-gray-100 max-h-60 overflow-auto whitespace-pre-wrap text-xs">
-            {{ r.text[:1500] }}{% if r.text|length > 1500 %}…{% endif %}
-          </pre>
+          <pre class="p-2 bg-gray-100 max-h-48 overflow-auto whitespace-pre-wrap text-xs">{{ r.text }}</pre>
         </details>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
 
-        <!-- EDIT (= GET /edit_resume?id=…)  -->
-        <form action="/edit_resume" method="get" class="inline">
-          <input type="hidden" name="id" value="{{ r.id }}">
-          <!--  ✦ add type="submit" so only this form fires  -->
-          <button type="submit" class="text-yellow-600 hover:underline">edit</button>
-        </form>
-
-        <!-- DELETE (= POST /delete_resume) -->
-        <form action="/delete_resume" method="post" class="inline">
-          <input type="hidden" name="id" value="{{ r.id }}">
-          <button type="submit"
-                  class="text-red-600 hover:underline"
-                  onclick="return confirm('Delete résumé?')">
-            delete
-          </button>
-        </form>
-
-      </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
-  <div class="flex justify-between items-center mt-4 text-sm">
+  <div class="flex justify-between items-center text-sm">
     {% if prev_page %}
       <a href="/resumes?page={{ prev_page }}{% if qs %}&{{ qs }}{% endif %}" class="text-blue-600 hover:underline">&laquo; Prev</a>
-    {% else %}
-      <span></span>
-    {% endif %}
+    {% else %}<span></span>{% endif %}
     <span>Page {{ page }} of {{ pages }}</span>
     {% if next_page %}
       <a href="/resumes?page={{ next_page }}{% if qs %}&{{ qs }}{% endif %}" class="text-blue-600 hover:underline">Next &raquo;</a>
-    {% else %}
-      <span></span>
-    {% endif %}
+    {% else %}<span></span>{% endif %}
   </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// client-side filter
-const rows = [...document.querySelectorAll('#cv-table tbody tr')];
-document.getElementById('search').oninput = e=>{
+const cards = [...document.querySelectorAll('.card')];
+const search = document.getElementById('search');
+search.oninput = e => {
   const q = e.target.value.toLowerCase();
-  rows.forEach(tr=>{
-    tr.style.display = tr.innerText.toLowerCase().includes(q) ? '' : 'none';
+  cards.forEach(c => {
+    c.style.display = c.innerText.toLowerCase().includes(q) ? '' : 'none';
   });
 };
 </script>
