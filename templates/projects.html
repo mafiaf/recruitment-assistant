@@ -22,7 +22,7 @@
       <button type="button" class="open-details text-blue-600 hover:underline flex items-center gap-1 mb-2"><i class="fa-solid fa-eye"></i>View details</button>
       <div class="hidden full-details">
         <div class="mt-2 whitespace-pre-wrap">{{ p.description }}</div>
-        <div class="overflow-auto">{{ p.table_html | safe }}</div>
+        <div>{{ p.table_html | safe }}</div>
       </div>
       <div class="actions mt-auto flex justify-end gap-3 text-sm">
         <a href="/edit_project?ts={{ p.ts.isoformat() }}" class="text-blue-600 hover:text-blue-800 flex items-center gap-1"><i class="fa-solid fa-pen"></i>Edit</a>
