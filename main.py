@@ -346,6 +346,7 @@ async def upload_resume(
         display_name = guess_name(name, "", text)
         resume_id = slugify(display_name)
         meta = {"name": display_name, "text": text}
+        meta["file_type"] = "txt"
         if tag_list:
             meta["tags"] = tag_list
         if skill_list:
@@ -355,7 +356,7 @@ async def upload_resume(
         if years_val is not None:
             meta["years"] = years_val
         add_resume_to_pinecone(text, resume_id, meta, "resumes")
-        doc = {"resume_id": resume_id, "name": display_name, "text": text}
+        doc = {"resume_id": resume_id, "name": display_name, "text": text, "file_type": "txt"}
         if tag_list:
             doc["tags"] = tag_list
         if skill_list:
@@ -387,7 +388,7 @@ async def upload_resume(
             # fallback: text field without file
             display_name = guess_name(name or "", "", text)
             resume_id = slugify(display_name)
-            meta = {"name": display_name, "text": text}
+            meta = {"name": display_name, "text": text, "file_type": "txt"}
             if tag_list:
                 meta["tags"] = tag_list
             if skill_list:
@@ -397,7 +398,7 @@ async def upload_resume(
             if years_val is not None:
                 meta["years"] = years_val
             add_resume_to_pinecone(text, resume_id, meta, "resumes")
-            doc = {"resume_id": resume_id, "name": display_name, "text": text}
+            doc = {"resume_id": resume_id, "name": display_name, "text": text, "file_type": "txt"}
             if tag_list:
                 doc["tags"] = tag_list
             if skill_list:
@@ -425,7 +426,8 @@ async def upload_resume(
                 continue
             display_name = guess_name(name or "", filename, file_text)
             resume_id = slugify(display_name)
-            meta = {"name": display_name, "text": file_text}
+            ftype = ext.lstrip('.') or 'file'
+            meta = {"name": display_name, "text": file_text, "file_type": ftype}
             if tag_list:
                 meta["tags"] = tag_list
             if skill_list:
@@ -435,7 +437,7 @@ async def upload_resume(
             if years_val is not None:
                 meta["years"] = years_val
             add_resume_to_pinecone(file_text, resume_id, meta, "resumes")
-            doc = {"resume_id": resume_id, "name": display_name, "text": file_text}
+            doc = {"resume_id": resume_id, "name": display_name, "text": file_text, "file_type": ftype}
             if tag_list:
                 doc["tags"] = tag_list
             if skill_list:
@@ -744,6 +746,11 @@ async def list_resumes(
                 "id": d.get("resume_id", "—"),
                 "name": d.get("name", "Unknown"),
                 "text": (d.get("text") or "")[:400] + "…",
+                "skills": d.get("skills", []),
+                "location": d.get("location", ""),
+                "tags": d.get("tags", []),
+                "years": d.get("years"),
+                "file_type": d.get("file_type", ""),
                 "added": added,
             }
         )
@@ -760,6 +767,11 @@ async def list_resumes(
         query["max_years"] = max_years
     qs = urlencode(query)
 
+    def remove_param(key: str) -> str:
+        q = dict(query)
+        q.pop(key, None)
+        return urlencode(q)
+
     ctx = {
         "resumes": resumes_for_tpl,
         "page": page,
@@ -771,6 +783,10 @@ async def list_resumes(
         "min_years": min_years,
         "max_years": max_years,
         "qs": qs,
+        "rm_skill": remove_param("skill"),
+        "rm_location": remove_param("location"),
+        "rm_min_years": remove_param("min_years"),
+        "rm_max_years": remove_param("max_years"),
     }
     return await render(
         request,
