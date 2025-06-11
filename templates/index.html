@@ -19,8 +19,8 @@
       {% for r in resumes[:16] %}
       <div class="card animate-pop flex flex-col">
         <div class="flex items-start justify-between mb-2">
-          <span class="font-bold text-base">{{ r.name }}</span>
-          <span class="text-xs text-gray-500">{{ r.added|default('—') }}</span>
+          <span class="card-title text-base">{{ r.name }}</span>
+          <span class="date-label">{{ r.added|default('—') }}</span>
         </div>
         <div class="actions mt-auto flex justify-end gap-3 text-sm">
           <a href="/edit_resume?id={{ r.id }}" class="text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1"><i class="fa-solid fa-pen"></i>Edit</a>
