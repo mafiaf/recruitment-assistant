@@ -284,9 +284,60 @@ body.dark .chat-input-row {
   border: none;
   width: min(90vw, 60rem);
   max-height: 90vh;
+  padding: 0;
 }
 #project-modal::backdrop {
   background: rgba(0,0,0,0.6);
+}
+
+.modal {
+  background: #fefefe;
+  color: #111827;
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+}
+body.dark .modal {
+  background: rgba(31,41,55,0.95);
+  color: #f3f4f6;
+}
+
+.modal-header {
+  position: sticky;
+  top: 0;
+  background: inherit;
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  z-index: 10;
+}
+body.dark .modal-header {
+  border-color: #374151;
+}
+
+.modal-body {
+  padding: 1.5rem;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.modal-body > * + * {
+  margin-top: 1rem;
+}
+
+.close-icon {
+  font-size: 1.5rem;
+  padding: 0.5rem;
+  cursor: pointer;
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+.close-icon:hover {
+  background: rgba(0,0,0,0.05);
+}
+body.dark .close-icon:hover {
+  background: rgba(255,255,255,0.1);
 }
 
 /* user admin extras */

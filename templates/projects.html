@@ -48,9 +48,11 @@
     {% else %}<span></span>{% endif %}
   </div>
 
-  <dialog id="project-modal" class="rounded-lg p-6 shadow-xl bg-white dark:bg-slate-800 max-w-4xl w-[90vw] max-h-[90vh] overflow-auto">
-    <button type="button" id="close-modal" class="text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white absolute top-2 right-2"><i class="fa-solid fa-xmark"></i></button>
-    <div id="modal-body" class="prose dark:prose-invert"></div>
+  <dialog id="project-modal" class="modal">
+    <div class="modal-header">
+      <button type="button" id="close-modal" class="close-icon"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="modal-body" class="modal-body prose dark:prose-invert"></div>
   </dialog>
 </div>
 {% endblock %}
