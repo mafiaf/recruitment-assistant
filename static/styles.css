@@ -141,11 +141,16 @@ body.dark a {
   background: #e5e7eb;
   border-radius: 9999px;
   font-size: 0.75rem;
+  transition: background 0.2s ease;
 }
 .dark .chip {
   background: #475569;
   color: #f1f5f9;
 }
+.chip:hover { background: #d1d5db; }
+.chip:active { background: #cbd5e1; }
+.dark .chip:hover { background: #64748b; }
+.dark .chip:active { background: #475569; }
 
 .filter-bar {
   display: flex;
@@ -196,10 +201,14 @@ body.dark a {
 /* chat bubbles text color */
 .chat-bubble {
   color: #374151;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 body.dark .chat-bubble {
   color: #f1f5f9;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4);
 }
+.chat-bubble.user { color: #fff; }
+body.dark .chat-bubble.user { color: #fff; }
 
 /* chat mode buttons */
 .mode-btn {
@@ -224,4 +233,22 @@ body.dark .mode-btn:hover { background: #334155; }
 body.dark .mode-btn.active {
   background: #3b82f6;
   color: #fff;
+}
+
+@keyframes fade-slide {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.message {
+  animation: fade-slide 0.3s ease forwards;
+}
+
+.chat-input-row {
+  background: rgba(255,255,255,0.6);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 -1px 2px rgba(0,0,0,0.1);
+}
+body.dark .chat-input-row {
+  background: rgba(30,41,59,0.6);
 }
