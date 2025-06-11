@@ -18,16 +18,17 @@ header {
   backdrop-filter: blur(12px);
 }
 .card {
+  position: relative;
   width: 100%;
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(8px);
   border-radius: 0.75rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   padding: 1.25rem;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease-in, box-shadow 0.2s ease-in;
 }
 .card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 .dark .card {
@@ -93,6 +94,19 @@ body.dark select {
 
 .upload-grid .card {
   height: 15.5rem;
+}
+
+.card .actions {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease-in, visibility 0.2s ease-in;
+}
+
+.card:hover .actions {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 body.dark aside {
