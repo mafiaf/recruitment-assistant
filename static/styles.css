@@ -51,11 +51,29 @@ body.dark select {
   box-shadow: 0 0 0 4px rgba(59,130,246,0.4);
   transform: scale(1.02);
 }
+#resume-form {
+  position: relative;
+}
+#resume-form::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0.25rem;
+  border: 2px dashed rgba(99,102,241,0.3);
+  border-radius: 1.5rem;
+}
 #resume-form i {
   transition: transform 0.3s ease;
 }
 #resume-form:hover i {
   transform: translateY(-4px);
+}
+@keyframes bounce {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+#resume-form:hover .cloud-icon {
+  animation: bounce 0.6s ease;
 }
 @keyframes pop {
   from { opacity:0; transform: scale(0.95); }
@@ -68,9 +86,7 @@ body.dark select {
 /* grid layout for recent uploads */
 .upload-grid {
   display: grid;
-
-  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
-
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
   grid-auto-rows: auto;
 }
 
