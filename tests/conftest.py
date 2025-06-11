@@ -375,6 +375,7 @@ stub_mongo_utils.resumes_count = lambda *a, **kw: 0
 stub_mongo_utils.resumes_collection = None
 stub_mongo_utils.add_project_history = _async_none
 stub_mongo_utils.delete_project = _async_one
+stub_mongo_utils.update_project_description = _async_one
 stub_mongo_utils.ensure_indexes = _async_none
 
 class DummyColl:
