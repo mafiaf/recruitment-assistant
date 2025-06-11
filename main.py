@@ -44,6 +44,7 @@ from mongo_utils import (
     resumes_collection,
     add_project_history,
     delete_project,
+    update_project_description,
     ensure_indexes,
     resumes_count,
     resumes_page,
@@ -841,6 +842,32 @@ async def delete_project_route(request: Request,
         logger.warning("No project found with ts %s", ts)
     else:
         logger.info("Deleted project with ts %s", ts)
+    return RedirectResponse("/projects", status_code=303)
+
+
+@app.get("/edit_project", response_class=HTMLResponse)
+async def edit_project_form(request: Request, ts: str, user=Depends(require_login)):
+    session_user = await get_current_user(request.cookies.get(COOKIE_NAME))
+    user_id = session_user["username"] if session_user else "anon"
+    doc = await chat_find_one({"user_id": user_id}) or {}
+    projects = doc.get("projects", [])
+    project = next((p for p in projects if p.get("ts") and p["ts"].isoformat() == ts), None)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return await render(
+        request,
+        "edit_project.html",
+        {"project": project},
+        page_title="Edit Project",
+        active="/projects",
+    )
+
+
+@app.post("/edit_project")
+async def edit_project_post(request: Request, ts: str = Form(...), description: str = Form(...), user=Depends(require_login)):
+    session_user = await get_current_user(request.cookies.get(COOKIE_NAME))
+    user_id = session_user["username"] if session_user else "anon"
+    await update_project_description(user_id, ts, description)
     return RedirectResponse("/projects", status_code=303)
 
 @app.get("/view_resumes", response_class=HTMLResponse)

@@ -315,3 +315,20 @@ async def delete_project(user_id: str, ts_iso: str) -> int:
         {"$pull": {"projects": {"ts": ts}}},
     )
     return res.modified_count
+
+
+async def update_project_description(
+    user_id: str, ts_iso: str, description: str
+) -> int:
+    """Update description for a stored project."""
+    if await _guard("update_project_description"):
+        return 0
+    try:
+        ts = datetime.fromisoformat(ts_iso)
+    except ValueError:
+        return 0
+    res = await chats.update_one(
+        {"user_id": user_id, "projects.ts": ts},
+        {"$set": {"projects.$.description": description}},
+    )
+    return res.modified_count
