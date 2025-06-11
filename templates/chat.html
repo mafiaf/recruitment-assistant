@@ -14,7 +14,7 @@
            class="mb-3 w-full border px-2 py-1 rounded" />
     <div id="cand-list" class="space-y-2 text-sm">
       {% for c in candidates %}
-      <label class="candidate-item flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700">
+      <label class="candidate-item flex items-center gap-2 p-2 rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700">
         <input type="checkbox" value="{{ c.id }}" class="candidate-box peer hidden">
         <div class="w-8 h-8 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs avatar">{{ c.name[:1] }}</div>
         <div class="flex-1">
@@ -24,7 +24,7 @@
             {% for s in c.skills %}<span class="chip">{{ s }}</span>{% endfor %}
           </div>
         </div>
-        <button type="button" class="switch-btn text-blue-600 text-xs hidden peer-checked:inline">switch</button>
+        <button type="button" class="switch-btn hidden peer-checked:inline text-xs font-medium px-2 py-0.5 rounded">switch</button>
       </label>
       {% endfor %}
     </div>
@@ -41,7 +41,7 @@
         </div>
         <div>
           <div class="text-xs font-semibold text-gray-600">Assistant</div>
-          <div class="chat-bubble assistant rounded-xl px-4 py-2 bg-gray-100 dark:bg-slate-700 whitespace-pre-wrap">
+          <div class="chat-bubble assistant rounded-xl px-4 py-2 bg-gray-100 text-gray-800 dark:bg-blue-900 dark:text-white whitespace-pre-wrap">
             {{ msg.content | safe }}
           </div>
           {% if msg.time %}<div class="text-xs text-gray-500 mt-1">{{ msg.time }}</div>{% endif %}
@@ -59,7 +59,7 @@
     </div>
 
       {# quick prompts row #}
-      <div id="quick-prompts" class="border-t bg-white/70 dark:bg-slate-700/70 backdrop-blur p-4 space-y-2 text-sm">
+      <div id="quick-prompts" class="border-t bg-white shadow-sm dark:bg-gray-800 p-4 space-y-2 text-sm">
         {% for grp, items in quick_prompts|groupby('group') %}
         <div class="flex items-center flex-wrap gap-2">
           <span class="font-medium mr-1">{{ grp }}</span>
@@ -73,7 +73,7 @@
       </div>
 
       {# chat mode toggle #}
-      <div class="border-t bg-white/70 dark:bg-slate-700/70 backdrop-blur p-4 flex items-center gap-2 text-sm">
+      <div class="border-t bg-white shadow-sm dark:bg-gray-800 p-4 flex items-center gap-2 text-sm">
         <span class="font-medium">Chat mode:</span>
         <input type="hidden" id="chat-mode" value="general">
         <div id="chat-mode-group" class="flex gap-2">
@@ -119,7 +119,7 @@ function addBubble(role, html, time) {
   const align = role === 'user' ? 'ml-auto text-right' : '';
   const bg    = role === 'user'
                ? 'bg-blue-500 text-white dark:bg-slate-600'
-               : 'bg-gray-100 dark:bg-slate-700';
+               : 'bg-gray-100 text-gray-800 dark:bg-blue-900 dark:text-white';
   let block;
   if (role === 'assist') {
     block = `<div class="message flex items-start gap-2 max-w-prose">
