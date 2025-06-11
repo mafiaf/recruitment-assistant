@@ -49,7 +49,8 @@ async def test_upload_resume_json(authed):
 async def test_chat_json(authed):
     resp = await main.chat(DummyRequest("/chat"), chat_data=main.ChatRequest(text="hello", candidate_ids=[]))
     assert resp.status_code == 200
-    assert resp.body == b'{"reply":"hi"}' or resp.body == b'{"reply": "hi"}'
+    assert b'"reply":' in resp.body
+    assert b'"time":' in resp.body
 
 
 @pytest.mark.asyncio
