@@ -3,22 +3,75 @@
 {% set active = "/profile" %}
 
 {% block body %}
-<div class="max-w-lg mx-auto bg-white/70 backdrop-blur p-6 rounded-xl shadow">
-<h2 class="text-2xl font-semibold mb-6">My profile</h2>
+<div class="max-w-2xl mx-auto space-y-8">
+  <div class="card profile-banner flex items-center gap-6 rounded-2xl shadow-lg">
+    <img src="https://api.dicebear.com/5.x/initials/svg?seed={{ user.username }}" alt="avatar"
+         class="w-24 h-24 rounded-full shadow">
+    <div>
+      <h2 class="text-2xl font-semibold">{{ user.username }}</h2>
+      <span class="inline-block mt-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-sm">
+        {{ user.role|capitalize }}
+      </span>
+    </div>
+  </div>
 
-<p><strong>Username:</strong> {{ user.username }}</p>
-<p><strong>Role:</strong> {{ user.role }}</p>
+  <form id="pwd-form" action="/profile/password" method="post" class="card space-y-4 max-w-md rounded-2xl shadow-lg">
+    <h3 class="text-lg font-semibold text-indigo-700">Change password</h3>
+    <div class="relative">
+      <input name="old" type="password" placeholder="Current password"
+             class="border w-full px-3 py-2 rounded" required>
+      <button type="button" class="toggle-pass absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">
+        <i class="fa-solid fa-eye"></i>
+      </button>
+    </div>
+    <div class="relative">
+      <input id="new-pass" name="new" type="password" placeholder="New password"
+             class="border w-full px-3 py-2 rounded" required>
+      <button type="button" class="toggle-pass absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">
+        <i class="fa-solid fa-eye"></i>
+      </button>
+    </div>
+    <div id="strength" class="text-sm text-gray-600"></div>
+    <button class="px-4 py-2 bg-blue-600 text-white rounded w-full flex items-center justify-center gap-2">
+      <span>Update</span>
+      <i id="spinner" class="fa-solid fa-spinner fa-spin hidden"></i>
+    </button>
+  </form>
 
-<h3 class="text-lg font-medium mt-8 mb-2">Change password</h3>
-<form action="/profile/password" method="post" class="space-y-2 max-w-xs">
-  <input name="old" type="password" placeholder="Current password"
-         class="border w-full px-3 py-2 rounded" required>
-  <input name="new" type="password" placeholder="New password"
-         class="border w-full px-3 py-2 rounded" required>
-  <button class="px-4 py-2 bg-blue-600 text-white rounded w-full">Update</button>
-</form>
-{% if request.query_params.get('ok') %}
-<p class="text-green-600 mt-2">✅ Password updated</p>
-{% endif %}
+  {% if request.query_params.get('ok') %}
+  <div class="bg-green-100 text-green-800 px-4 py-2 rounded shadow" id="success-msg">Password updated!</div>
+  {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.querySelectorAll('.toggle-pass').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = btn.previousElementSibling;
+      input.type = input.type === 'password' ? 'text' : 'password';
+    });
+  });
+
+  const newField = document.getElementById('new-pass');
+  const strength = document.getElementById('strength');
+  if (newField) {
+    newField.addEventListener('input', () => {
+      const val = newField.value;
+      let score = 0;
+      if (val.length >= 8) score++;
+      if (/[A-Z]/.test(val)) score++;
+      if (/[0-9]/.test(val)) score++;
+      if (/[^A-Za-z0-9]/.test(val)) score++;
+      const levels = ['Weak', 'Fair', 'Good', 'Strong', 'Excellent'];
+      strength.textContent = 'Strength: ' + levels[score];
+    });
+  }
+
+  const form = document.getElementById('pwd-form');
+  const spinner = document.getElementById('spinner');
+  if (form) {
+    form.addEventListener('submit', () => spinner.classList.remove('hidden'));
+  }
+</script>
 {% endblock %}
