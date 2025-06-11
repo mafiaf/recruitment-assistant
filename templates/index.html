@@ -22,11 +22,11 @@
           <span class="font-bold text-base">{{ r.name }}</span>
           <span class="text-xs text-gray-500">{{ r.added|default('—') }}</span>
         </div>
-        <div class="mt-auto flex justify-end gap-3 text-sm opacity-90 hover:opacity-100">
+        <div class="actions mt-auto flex justify-end gap-3 text-sm">
           <a href="/resumes#{{ r.id }}" class="text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1"><i class="fa-solid fa-pen"></i>Edit</a>
-          <form action="/delete_resume" method="post" class="inline">
+          <form action="/delete_resume" method="post" class="delete-form inline">
             <input type="hidden" name="id" value="{{ r.id }}">
-            <button class="text-red-600 hover:text-red-800 transition-colors flex items-center gap-1" onclick="return confirm('Delete?')"><i class="fa-solid fa-trash"></i>Delete</button>
+            <button class="text-red-600 hover:text-red-800 transition-colors flex items-center gap-1"><i class="fa-solid fa-trash"></i>Delete</button>
           </form>
         </div>
       </div>
@@ -73,5 +73,16 @@ function uploadSingle(file, bar){
     xhr.send(fd);
   });
 }
+
+// handle inline résumé deletion without leaving the page
+document.querySelectorAll('.delete-form').forEach(form => {
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    if(!confirm('Delete?')) return;
+    const fd = new FormData(form);
+    const resp = await fetch('/delete_resume', {method:'POST', body: fd});
+    if(resp.ok) form.closest('.card').remove();
+  });
+});
 </script>
 {% endblock %}
