@@ -22,8 +22,8 @@
           <span class="font-bold text-base">{{ r.name }}</span>
           <span class="text-xs text-gray-500">{{ r.added|default('—') }}</span>
         </div>
-        <div class="actions mt-auto flex justify-end gap-3 text-sm">
-          <a href="/resumes#{{ r.id }}" class="text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1"><i class="fa-solid fa-pen"></i>Edit</a>
+        <div class="actions flex justify-end gap-3 text-sm">
+          <a href="/edit_resume?id={{ r.id }}" class="text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1"><i class="fa-solid fa-pen"></i>Edit</a>
           <form action="/delete_resume" method="post" class="delete-form inline">
             <input type="hidden" name="id" value="{{ r.id }}">
             <button class="text-red-600 hover:text-red-800 transition-colors flex items-center gap-1"><i class="fa-solid fa-trash"></i>Delete</button>
