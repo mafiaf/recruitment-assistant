@@ -3,19 +3,31 @@
 {% set active = "/profile" %}
 
 {% block body %}
-<div class="max-w-2xl mx-auto space-y-8">
-  <div class="card profile-banner flex items-center gap-6 rounded-2xl shadow-lg">
-    <img src="https://api.dicebear.com/5.x/initials/svg?seed={{ user.username }}" alt="avatar"
+<div class="max-w-2xl mx-auto flex flex-col items-center gap-8">
+  <div class="card profile-banner flex flex-col sm:flex-row items-center gap-6 rounded-2xl shadow-lg w-full">
+    {% if user.photo %}
+    <img src="/static/photos/{{ user.photo }}" alt="avatar"
          class="w-24 h-24 rounded-full shadow">
-    <div>
+    {% else %}
+    <img src="https://ui-avatars.com/api/?name={{ user.username|urlencode }}&size=128&background=random&color=fff" alt="avatar"
+         class="w-24 h-24 rounded-full shadow">
+    {% endif %}
+    <div class="text-center sm:text-left flex-1">
       <h2 class="text-2xl font-semibold">{{ user.username }}</h2>
       <span class="inline-block mt-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-sm">
         {{ user.role|capitalize }}
       </span>
+      <form id="photo-form" action="/profile/photo" method="post" enctype="multipart/form-data" class="mt-4 flex items-center gap-2 justify-center sm:justify-start">
+        <input type="file" name="photo" accept="image/*" required class="text-sm">
+        <button class="px-3 py-1 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 flex items-center gap-2">
+          <span>Upload Photo</span>
+          <i id="photo-spinner" class="fa-solid fa-spinner fa-spin hidden"></i>
+        </button>
+      </form>
     </div>
   </div>
 
-  <form id="pwd-form" action="/profile/password" method="post" class="card space-y-4 max-w-md rounded-2xl shadow-lg">
+  <form id="pwd-form" action="/profile/password" method="post" class="card space-y-4 max-w-md w-full rounded-2xl shadow-lg">
     <h3 class="text-lg font-semibold text-indigo-700">Change password</h3>
     <div class="relative">
       <input name="old" type="password" placeholder="Current password"
@@ -32,7 +44,7 @@
       </button>
     </div>
     <div id="strength" class="text-sm text-gray-600"></div>
-    <button class="px-4 py-2 bg-blue-600 text-white rounded w-full flex items-center justify-center gap-2">
+    <button class="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 w-full flex items-center justify-center gap-2">
       <span>Update</span>
       <i id="spinner" class="fa-solid fa-spinner fa-spin hidden"></i>
     </button>
@@ -72,6 +84,12 @@
   const spinner = document.getElementById('spinner');
   if (form) {
     form.addEventListener('submit', () => spinner.classList.remove('hidden'));
+  }
+
+  const photoForm = document.getElementById('photo-form');
+  const photoSpinner = document.getElementById('photo-spinner');
+  if (photoForm) {
+    photoForm.addEventListener('submit', () => photoSpinner.classList.remove('hidden'));
   }
 </script>
 {% endblock %}

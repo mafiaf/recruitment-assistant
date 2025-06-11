@@ -1,8 +1,12 @@
-from fastapi import APIRouter, Request, Form, Depends, HTTPException
+from fastapi import APIRouter, Request, Form, Depends, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
+import os
 import main
 
 router = APIRouter()
+
+PHOTO_DIR = os.path.join("static", "photos")
+os.makedirs(PHOTO_DIR, exist_ok=True)
 
 @router.get("/login", response_class=HTMLResponse)
 async def login_form(request: Request):
@@ -114,3 +118,20 @@ async def change_password(old: str = Form(...), new: str = Form(...), user=Depen
         {"$set": {"hashed_password": main.pwd_context.hash(new)}},
     )
     return RedirectResponse("/profile?ok=1", status_code=303)
+
+
+@router.post("/profile/photo", dependencies=[Depends(main.require_login)])
+async def upload_photo(photo: UploadFile = File(...), user=Depends(main.get_current_user)):
+    ext = os.path.splitext(photo.filename or "")[1].lower()
+    if ext not in {".jpg", ".jpeg", ".png", ".gif"}:
+        raise HTTPException(400, "Invalid image type")
+    filename = f"{user['username']}{ext}"
+    path = os.path.join(PHOTO_DIR, filename)
+    data = await photo.read()
+    with open(path, "wb") as f:
+        f.write(data)
+    await main.users_coll.update_one(
+        {"username": user["username"]},
+        {"$set": {"photo": filename}},
+    )
+    return RedirectResponse("/profile", status_code=303)
