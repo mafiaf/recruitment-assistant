@@ -11,7 +11,9 @@
     {% for p in projects %}
     <div class="card flex flex-col" data-ts="{{ p.ts.isoformat() }}">
       <div class="flex justify-between items-start mb-2">
-        <h2 class="font-semibold break-words mr-2">{{ p.description }}</h2>
+        <h2 class="font-semibold break-words mr-2 project-snippet">
+          {{ p.description[:200] }}{% if p.description|length > 200 %}&hellip;{% endif %}
+        </h2>
         <span class="text-xs date-label">{{ p.ts.strftime('%Y-%m-%d') }}</span>
       </div>
       <div class="text-xs flex flex-wrap gap-1 mb-2">
