@@ -261,3 +261,13 @@ body.dark .chat-input-row {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
 }
+
+/* modal dialog for project details */
+#project-modal {
+  border: none;
+  width: min(90vw, 60rem);
+  max-height: 90vh;
+}
+#project-modal::backdrop {
+  background: rgba(0,0,0,0.6);
+}
