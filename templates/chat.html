@@ -7,7 +7,7 @@
 <div class="flex h-[calc(100vh-4rem)] bg-gradient-to-br from-gray-50 to-gray-100">
 
   {# ── sidebar ────────────────────────────────────────────────── #}
-  <aside class="w-64 border-r border-gray-200 bg-white/70 dark:bg-slate-800/70 backdrop-blur p-4 overflow-auto">
+  <aside class="w-64 border-r border-gray-200 p-4 overflow-auto bg-transparent">
     <h2 class="font-semibold mb-2">Candidates</h2>
     <input id="filter" type="text"
            placeholder="filter…"
@@ -41,7 +41,7 @@
         </div>
         <div>
           <div class="text-xs font-semibold text-gray-600">Assistant</div>
-          <div class="rounded-xl px-4 py-2 bg-sky-50 dark:bg-slate-700 whitespace-pre-wrap">
+          <div class="chat-bubble rounded-xl px-4 py-2 bg-sky-50 dark:bg-slate-700 whitespace-pre-wrap">
             {{ msg.content | safe }}
           </div>
           {% if msg.time %}<div class="text-xs text-gray-500 mt-1">{{ msg.time }}</div>{% endif %}
@@ -49,7 +49,7 @@
       </div>
       {% else %}
       <div class="max-w-prose ml-auto text-right">
-        <div class="rounded-xl px-4 py-2 bg-blue-100 dark:bg-slate-600 whitespace-pre-wrap">
+        <div class="chat-bubble rounded-xl px-4 py-2 bg-blue-100 dark:bg-slate-600 whitespace-pre-wrap">
           {{ msg.content | safe }}
         </div>
         {% if msg.time %}<div class="text-xs text-gray-500 mt-1">{{ msg.time }}</div>{% endif %}
@@ -74,12 +74,13 @@
 
       {# chat mode toggle #}
       <div class="border-t bg-white/70 dark:bg-slate-700/70 backdrop-blur p-4 flex items-center gap-2 text-sm">
-        <label for="chat-mode" class="font-medium">Chat mode:</label>
-        <select id="chat-mode" class="border rounded px-2 py-1">
-          <option value="general">General AI</option>
-          <option value="ats">ATS Assistant</option>
-          <option value="role">Role-based Guidance</option>
-        </select>
+        <span class="font-medium">Chat mode:</span>
+        <input type="hidden" id="chat-mode" value="general">
+        <div id="chat-mode-group" class="flex gap-2">
+          <button type="button" data-mode="general" class="mode-btn active">General AI</button>
+          <button type="button" data-mode="ats" class="mode-btn">ATS Assistant</button>
+          <button type="button" data-mode="role" class="mode-btn">Role-based Guidance</button>
+        </div>
       </div>
 
       {# input row #}
@@ -127,13 +128,13 @@ function addBubble(role, html, time) {
                 </div>
                 <div>
                   <div class="text-xs font-semibold text-gray-600">Assistant</div>
-                  <div class="rounded-xl px-4 py-2 ${bg} whitespace-pre-wrap">${html}</div>
+                  <div class="chat-bubble rounded-xl px-4 py-2 ${bg} whitespace-pre-wrap">${html}</div>
                   ${time ? `<div class=\"text-xs text-gray-500 mt-1\">${time}</div>` : ''}
                 </div>
               </div>`;
   } else {
     block = `<div class="max-w-prose ${align}">
-               <div class="rounded-xl px-4 py-2 ${bg} whitespace-pre-wrap">${html}</div>
+               <div class="chat-bubble rounded-xl px-4 py-2 ${bg} whitespace-pre-wrap">${html}</div>
                ${time ? `<div class=\"text-xs text-gray-500 mt-1\">${time}</div>` : ''}
              </div>`;
   }
@@ -146,7 +147,7 @@ function showTyping() {
   typingDiv = document.createElement('div');
   typingDiv.className = 'max-w-prose';
   typingDiv.innerHTML = `
-    <div class="rounded-xl px-4 py-2 bg-sky-50 dark:bg-slate-700">
+    <div class="chat-bubble rounded-xl px-4 py-2 bg-sky-50 dark:bg-slate-700">
       <div class="typing-indicator"><span></span><span></span><span></span></div>
     </div>`;
   qs('#chat-box').appendChild(typingDiv);
@@ -209,6 +210,15 @@ document.querySelectorAll('.switch-btn').forEach(btn => {
     const cb = parent.querySelector('.candidate-box');
     cb.checked = true;
     cb.dispatchEvent(new Event('change'));
+  };
+});
+
+// chat mode buttons
+document.querySelectorAll('#chat-mode-group .mode-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('#chat-mode-group .mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    modeSel().value = btn.dataset.mode;
   };
 });
 

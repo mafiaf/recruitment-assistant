@@ -192,3 +192,36 @@ body.dark a {
 }
 .feedback:hover { opacity: 1; }
 .dark .feedback { color: #f1f5f9; }
+
+/* chat bubbles text color */
+.chat-bubble {
+  color: #374151;
+}
+body.dark .chat-bubble {
+  color: #f1f5f9;
+}
+
+/* chat mode buttons */
+.mode-btn {
+  border: 1px solid #d1d5db;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+  background: #fff;
+  transition: background 0.2s ease;
+}
+.mode-btn:hover { background: #f1f5f9; }
+.mode-btn.active {
+  background: #2563eb;
+  color: #fff;
+}
+body.dark .mode-btn {
+  border-color: #475569;
+  background: #1e293b;
+  color: #f1f5f9;
+}
+body.dark .mode-btn:hover { background: #334155; }
+body.dark .mode-btn.active {
+  background: #3b82f6;
+  color: #fff;
+}
