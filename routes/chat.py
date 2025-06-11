@@ -73,6 +73,8 @@ async def chat_interface(request: Request, user=Depends(main.require_login)):
         {"role": m.get("role"), "content": main.sanitize_markdown(m.get("content", ""))}
         for m in history if isinstance(m, dict)
     ]
+    if not safe_history:
+        safe_history.append({"role": "assistant", "content": "Hi! What do you want to do today?"})
     return await main.render(
         request,
         "chat.html",
@@ -88,6 +90,7 @@ async def chat_interface(request: Request, user=Depends(main.require_login)):
 async def chat(request: Request, chat_data: ChatRequest = Body(...), user=Depends(main.require_login)):
     user_text = chat_data.text.strip()
     selected_ids = chat_data.candidate_ids
+    mode = chat_data.mode
     session_user = await main.get_current_user(request.cookies.get(main.COOKIE_NAME))
     user_id = session_user["username"] if session_user else "anon"
     doc = await main.chat_find_one({"user_id": user_id}) or {}
@@ -121,6 +124,10 @@ async def chat(request: Request, chat_data: ChatRequest = Body(...), user=Depend
             ),
         }
     ]
+    if mode == "ats":
+        messages[0]["content"] += " Focus on ATS optimization for résumés."
+    elif mode == "role":
+        messages[0]["content"] += " Provide role-based career guidance."
     if system_blocks:
         messages.append({"role": "system", "content": "\n\n".join(system_blocks)})
     for turn in history[-6:]:
