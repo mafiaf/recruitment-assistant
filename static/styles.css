@@ -15,6 +15,7 @@ header {
   backdrop-filter: blur(12px);
 }
 .card {
+  width: 100%;
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(8px);
   border-radius: 0.75rem;
@@ -39,4 +40,30 @@ input, textarea, select {
 }
 .animate-pop {
   animation: pop 0.4s ease;
+}
+
+/* grid layout for recent uploads */
+.upload-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+@media (min-width: 640px) {
+  .upload-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 768px) {
+  .upload-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1024px) {
+  .upload-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1280px) {
+  .upload-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
 }
