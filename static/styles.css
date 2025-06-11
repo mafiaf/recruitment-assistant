@@ -98,18 +98,17 @@ body.dark select {
 
 .card .actions {
   opacity: 0;
-
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.2s ease-in, visibility 0.2s ease-in;
+  transition: opacity 0.2s ease-in, transform 0.2s ease-in, visibility 0.2s ease-in;
+  transform: translateY(4px);
 }
 
 .card:hover .actions {
   opacity: 1;
-
   visibility: visible;
   pointer-events: auto;
-
+  transform: translateY(0);
 }
 
 body.dark aside {
