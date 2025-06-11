@@ -1,24 +1,42 @@
 /* Custom global styles */
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Manrope', sans-serif;
   background: linear-gradient(135deg, #eef2ff, #f8fafc);
   min-height: 100vh;
   color: #1e293b;
+  transition: background 0.3s ease, color 0.3s ease;
 }
-
+body.dark {
+  background: linear-gradient(135deg, #1e293b, #334155);
+  color: #f1f5f9;
+}
 header {
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(12px);
 }
-
 .card {
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(8px);
   border-radius: 0.75rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   padding: 1.5rem;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
-
+.dark .card {
+  background: rgba(30, 41, 59, 0.7);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
 input, textarea, select {
   border-color: #d1d5db;
+}
+#resume-form.drag-over {
+  box-shadow: 0 0 0 4px rgba(59,130,246,0.4);
+  transform: scale(1.02);
+}
+@keyframes pop {
+  from { opacity:0; transform: scale(0.95); }
+  to   { opacity:1; transform: scale(1); }
+}
+.animate-pop {
+  animation: pop 0.4s ease;
 }
