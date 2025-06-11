@@ -12,3 +12,4 @@ class ResumeUpload(BaseModel):
 class ChatRequest(BaseModel):
     text: str
     candidate_ids: List[str] = []
+    mode: str = "general"
