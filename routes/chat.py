@@ -1,4 +1,5 @@
 from typing import List
+from datetime import datetime
 from fastapi import APIRouter, Request, Depends, Form, Body
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 import main
@@ -8,7 +9,6 @@ router = APIRouter()
 
 # default set of quick prompt templates shown in the chat UI
 QUICK_PROMPTS = [
-
     {
         "title": "Resume Audit",
         "text": (
@@ -16,6 +16,8 @@ QUICK_PROMPTS = [
             "Review this resume and tell me exactly why it's getting ignored. "
             "Be Direct. No sugarcoating. Point out what's weak and how to fix it."
         ),
+        "icon": "fa-solid fa-magnifying-glass",
+        "group": "Audit",
     },
     {
         "title": "ATS Optimization",
@@ -24,6 +26,8 @@ QUICK_PROMPTS = [
             "[Insert job title] role. Add industry-specific keywords, skills, "
             "and quantify my achievements - without sounding robotic."
         ),
+        "icon": "fa-solid fa-chart-line",
+        "group": "Rewrite",
     },
     {
         "title": "Job Match customization",
@@ -32,6 +36,8 @@ QUICK_PROMPTS = [
             "Match tone, skills, and results to what they're asking for - keep it "
             "sharp and honest"
         ),
+        "icon": "fa-solid fa-link",
+        "group": "Rewrite",
     },
     {
         "title": "Confidence rewrite",
@@ -40,6 +46,8 @@ QUICK_PROMPTS = [
             "No passive language. Make it outcome-driven and confident - "
             "like someone any company would want to hire."
         ),
+        "icon": "fa-solid fa-pen",
+        "group": "Rewrite",
     },
     {
         "title": "Cover letter writer",
@@ -48,6 +56,8 @@ QUICK_PROMPTS = [
             "role: [Insert job title]. Show excitement, competence and focus on "
             "the value I bring."
         ),
+        "icon": "fa-solid fa-envelope",
+        "group": "Rewrite",
     },
     {
         "title": "Interview rehearsal",
@@ -56,6 +66,8 @@ QUICK_PROMPTS = [
             "[Insert job title] role and answer each one using the STAR format "
             "with specific, impressive examples"
         ),
+        "icon": "fa-solid fa-comments",
+        "group": "Interview",
     },
 
 ]
@@ -70,11 +82,20 @@ async def chat_interface(request: Request, user=Depends(main.require_login)):
     if not isinstance(history, list):
         history = []
     safe_history = [
-        {"role": m.get("role"), "content": main.sanitize_markdown(m.get("content", ""))}
-        for m in history if isinstance(m, dict)
+        {
+            "role": m.get("role"),
+            "content": main.sanitize_markdown(m.get("content", "")),
+            "time": m.get("time"),
+        }
+        for m in history
+        if isinstance(m, dict)
     ]
     if not safe_history:
-        safe_history.append({"role": "assistant", "content": "Hi! What do you want to do today?"})
+        safe_history.append({
+            "role": "assistant",
+            "content": "Hi! What do you want to do today?",
+            "time": datetime.utcnow().isoformat(timespec="seconds"),
+        })
     return await main.render(
         request,
         "chat.html",
@@ -142,12 +163,13 @@ async def chat(request: Request, chat_data: ChatRequest = Body(...), user=Depend
     )
     assistant_reply = resp.choices[0].message.content.strip()
     safe_reply = main.sanitize_markdown(assistant_reply)
+    ts = datetime.utcnow().isoformat(timespec="seconds")
     history.extend([
-        {"role": "user", "content": user_text},
-        {"role": "assistant", "content": assistant_reply},
+        {"role": "user", "content": user_text, "time": ts},
+        {"role": "assistant", "content": assistant_reply, "time": ts},
     ])
     await main.chat_upsert(user_id, {"messages": history})
-    return {"reply": safe_reply}
+    return {"reply": safe_reply, "time": ts}
 
 @router.post("/chat_action", response_class=HTMLResponse)
 async def chat_action(
