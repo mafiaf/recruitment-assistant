@@ -36,7 +36,7 @@
       {% for r in resumes %}
       <tr class="odd:bg-white even:bg-gray-50">
         <td class="px-4 py-2">{{ r.name }}</td>
-        <td class="px-2 py-2">{{ r.added|default('—') }}</td>
+        <td class="px-2 py-2 date-label">{{ r.added|default('—') }}</td>
         <td class="px-2 py-2 space-x-3 text-sm">
 
         <!-- preview → uses <details>   (no form, just HTML) -->
