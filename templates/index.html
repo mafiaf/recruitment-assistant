@@ -4,69 +4,35 @@
 {% set page_title = "Home" %}
 
 {% block body %}
-<div class="pt-6 flex flex-col items-center gap-8 max-w-7xl mx-auto">
-
-  <!-- ════════════════════════════════
-       DRAG-AND-DROP + AJAX UPLOAD BOX
-       ════════════════════════════════ -->
-  <form id="resume-form"
-        class="w-full max-w-xl border-4 border-dashed border-gray-300
-               rounded-2xl flex flex-col items-center justify-center
-               py-16 bg-white/80 backdrop-blur transition-colors"
-        autocomplete="off">
-    <input id="resume-file"
-           type="file"
-           name="files"
-           accept=".pdf,.docx"
-           multiple
-           class="hidden">
-    <p class="text-lg text-gray-500 mb-4 pointer-events-none">
-      Drag &amp; drop a résumé PDF / DOCX here<br>
-      or click to browse
-    </p>
-    <button id="select-btn"
-            type="button"
-            class="px-4 py-2 rounded bg-blue-600 text-white">
-      Browse files
-    </button>
+<div class="max-w-5xl mx-auto flex flex-col gap-8">
+  <form id="resume-form" class="border-4 border-dashed border-indigo-300 rounded-3xl p-16 text-center bg-white/50 backdrop-blur-lg cursor-pointer transition-all" autocomplete="off">
+    <input id="resume-file" type="file" name="files" accept=".pdf,.docx" multiple class="hidden">
+    <div class="text-5xl text-indigo-400 mb-4"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+    <p class="text-lg font-medium">Drop your résumé here<br>or click to browse files</p>
   </form>
 
-  <!-- upload progress feedback -->
   <div id="upload-progress" class="w-full max-w-xl"></div>
 
-  <!-- ════════════════════════════════
-       RECENT UPLOADS TABLE
-       ════════════════════════════════ -->
-  <section class="w-full max-w-5xl bg-white/70 backdrop-blur p-4 rounded-xl shadow">
-    <h2 class="text-lg font-medium mb-2">Recent uploads</h2>
-    <table id="uploads-table"
-           class="w-full text-sm border rounded-xl overflow-hidden shadow">
-      <thead>
-        <tr class="bg-gray-100 text-left">
-          <th class="px-4 py-2">Name</th>
-          <th class="px-2 py-2">Added</th>
-          <th class="px-2 py-2">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for r in resumes %}
-        <tr class="odd:bg-white even:bg-gray-50">
-          <td class="px-4 py-2">{{ r.name }}</td>
-          <td class="px-2 py-2">{{ r.added|default('—') }}</td>
-          <td class="px-2 py-2 space-x-3">
-            <a href="/resumes#{{ r.id }}" class="text-blue-600 hover:underline">edit</a>
-            <form action="/delete_resume" method="post" class="inline">
-              <input type="hidden" name="id" value="{{ r.id }}">
-              <button class="text-red-600 hover:underline"
-                      onclick="return confirm('Delete?')">delete</button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <section>
+    <h2 class="text-xl font-semibold mb-2">Your Recent Uploads</h2>
+    <div class="flex overflow-x-auto gap-4 pb-4">
+      {% for r in resumes %}
+      <div class="card flex-shrink-0 w-64 animate-pop">
+        <div class="flex items-center justify-between mb-2">
+          <span class="font-medium">{{ r.name }}</span>
+          <span class="text-xs bg-indigo-100 text-indigo-600 rounded-full px-2 py-0.5">{{ r.added|default('—') }}</span>
+        </div>
+        <div class="flex gap-3 text-sm">
+          <a href="/resumes#{{ r.id }}" class="text-blue-600 flex items-center gap-1"><i class="fa-solid fa-pen"></i>Edit</a>
+          <form action="/delete_resume" method="post" class="inline">
+            <input type="hidden" name="id" value="{{ r.id }}">
+            <button class="text-red-600 flex items-center gap-1" onclick="return confirm('Delete?')"><i class="fa-solid fa-trash"></i>Delete</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
   </section>
-
 </div>
 {% endblock %}
 
@@ -74,75 +40,34 @@
 <script>
 const dropZone  = document.getElementById('resume-form');
 const fileInput = document.getElementById('resume-file');
-const browseBtn = document.getElementById('select-btn');
-
-
-/* click → open picker */
-browseBtn.onclick = () => fileInput.click();
-
-/* picker → send via fetch */
-fileInput.onchange = () => {
-  if (fileInput.files.length) uploadFiles(fileInput.files);
-};
-
-/* drag-and-drop visual cues */
-['dragenter','dragover'].forEach(evt =>
-  dropZone.addEventListener(evt, e=>{
-    e.preventDefault();
-    dropZone.classList.add('bg-blue-50');
-  })
-);
-['dragleave','drop'].forEach(evt =>
-  dropZone.addEventListener(evt, e=>{
-    e.preventDefault();
-    dropZone.classList.remove('bg-blue-50');
-  })
-);
-
-/* drop handler */
-dropZone.addEventListener('drop', e=>{
-  if (e.dataTransfer.files.length){
-    uploadFiles(e.dataTransfer.files);
-  }
-});
-
-/* core upload logic */
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.onchange = () => { if (fileInput.files.length) uploadFiles(fileInput.files); };
+['dragenter','dragover'].forEach(evt => dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.add('drag-over'); }));
+['dragleave','drop'].forEach(evt => dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.remove('drag-over'); }));
+dropZone.addEventListener('drop', e => { if (e.dataTransfer.files.length){ uploadFiles(e.dataTransfer.files); }});
 const progressBox = document.getElementById('upload-progress');
-
 function createBar(name){
   const wrapper = document.createElement('div');
   wrapper.className = 'my-2';
-  wrapper.innerHTML = `
-    <div class="text-sm mb-1">${name}</div>
-    <div class="w-full bg-gray-200 rounded"><div class="h-2 bg-blue-600 rounded" style="width:0%"></div></div>
-  `;
+  wrapper.innerHTML = `<div class="text-sm mb-1">${name}</div><div class="w-full bg-gray-200 rounded"><div class="h-2 bg-blue-600 rounded" style="width:0%"></div></div>`;
   progressBox.appendChild(wrapper);
   return wrapper.querySelector('.h-2');
 }
-
 function uploadFiles(files){
   const uploads = [];
   for(const file of files){
     const bar = createBar(file.name);
     uploads.push(uploadSingle(file, bar));
   }
-  Promise.allSettled(uploads).then(() => {
-    fileInput.value = '';
-    location.reload();
-  });
+  Promise.allSettled(uploads).then(() => { fileInput.value = ''; location.reload(); });
 }
-
 function uploadSingle(file, bar){
   return new Promise((resolve, reject) => {
     const fd = new FormData();
     fd.append('file', file);
     const xhr = new XMLHttpRequest();
     xhr.open('POST','/upload_resume');
-    xhr.upload.onprogress = e=>{
-      if(e.lengthComputable){
-        bar.style.width = (e.loaded/e.total*100)+'%';
-      }
-    };
+    xhr.upload.onprogress = e => { if(e.lengthComputable){ bar.style.width = (e.loaded/e.total*100)+'%'; } };
     xhr.onload = () => xhr.status>=200 && xhr.status<300 ? resolve() : reject();
     xhr.onerror = () => reject();
     xhr.send(fd);
