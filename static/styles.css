@@ -140,6 +140,26 @@ body.dark a {
   color: #93c5fd;
 }
 
+/* candidate list */
+.candidate-item {
+  transition: box-shadow 0.2s ease;
+}
+.candidate-item:hover {
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+.switch-btn {
+  background: #dbeafe;
+  color: #1e40af;
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  font-weight: 500;
+}
+.dark .switch-btn {
+  background: #1e3a8a;
+  color: #f1f5f9;
+}
+
 .card-title {
   font-weight: 600;
 }
@@ -155,13 +175,15 @@ body.dark a {
   align-items: center;
   gap: 0.25rem;
   padding: 0.125rem 0.5rem;
-  background: #e5e7eb;
+  background: #dbeafe;
   border-radius: 9999px;
   font-size: 0.75rem;
+  font-weight: 500;
+  color: #1e40af;
   transition: background 0.2s ease;
 }
 .dark .chip {
-  background: #475569;
+  background: #1e3a8a;
   color: #f1f5f9;
 }
 .chip:hover { background: #d1d5db; }
