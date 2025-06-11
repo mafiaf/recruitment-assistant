@@ -252,3 +252,12 @@ body.dark .mode-btn.active {
 body.dark .chat-input-row {
   background: rgba(30,41,59,0.6);
 }
+
+.project-snippet {
+  height: 4.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
