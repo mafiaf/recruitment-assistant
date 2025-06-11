@@ -3,37 +3,67 @@
 {% set page_title = "Projects" %}
 
 {% block body %}
-<div class="space-y-4">
+<div class="max-w-6xl mx-auto space-y-6">
+  <input id="search" type="text" placeholder="Search…" class="w-full sm:w-80 px-3 py-2 border rounded shadow-sm">
+
   {% if projects %}
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" id="project-grid">
     {% for p in projects %}
-      <details class="bg-white/70 backdrop-blur p-4 rounded shadow">
-        <summary class="cursor-pointer flex justify-between items-center">
-          <span>{{ p.description|truncate(80, True, '…') }}</span>
-          <form action="/delete_project" method="post" class="inline" onclick="event.stopPropagation();">
-            <input type="hidden" name="ts" value="{{ p.ts.isoformat() }}">
-            <button type="submit" class="text-red-600 text-xs hover:underline" onclick="return confirm('Delete project?')">delete</button>
-          </form>
-        </summary>
-        <div class="mt-2 text-sm whitespace-pre-wrap">{{ p.description }}</div>
+    <div class="card flex flex-col" data-ts="{{ p.ts.isoformat() }}">
+      <div class="flex justify-between items-start mb-2">
+        <h2 class="font-semibold break-words mr-2">{{ p.description }}</h2>
+        <span class="text-xs date-label">{{ p.ts.strftime('%Y-%m-%d') }}</span>
+      </div>
+      <div class="text-xs flex flex-wrap gap-1 mb-2">
+        {% for c in p.candidates %}<span class="chip">{{ c.name }}</span>{% endfor %}
+      </div>
+      <details class="mb-2">
+        <summary class="cursor-pointer text-blue-600 hover:underline flex items-center gap-1"><i class="fa-solid fa-eye"></i>View details</summary>
+        <div class="mt-2 whitespace-pre-wrap">{{ p.description }}</div>
         <div class="overflow-auto">{{ p.table_html | safe }}</div>
       </details>
+      <div class="actions mt-auto flex justify-end gap-3 text-sm">
+        <a href="/edit_project?ts={{ p.ts.isoformat() }}" class="text-blue-600 hover:text-blue-800 flex items-center gap-1"><i class="fa-solid fa-pen"></i>Edit</a>
+        <form action="/delete_project" method="post" class="delete-form inline">
+          <input type="hidden" name="ts" value="{{ p.ts.isoformat() }}">
+          <button class="text-red-600 hover:text-red-800 flex items-center gap-1"><i class="fa-solid fa-trash"></i>Delete</button>
+        </form>
+      </div>
+    </div>
     {% endfor %}
+  </div>
   {% else %}
-    <p>No past projects found.</p>
+  <p>No past projects found.</p>
   {% endif %}
 
-  <div class="flex justify-between items-center pt-2 text-sm">
+  <div class="flex justify-between items-center text-sm">
     {% if prev_page %}
       <a href="/projects?page={{ prev_page }}" class="text-blue-600 hover:underline">&laquo; Prev</a>
-    {% else %}
-      <span></span>
-    {% endif %}
+    {% else %}<span></span>{% endif %}
     <span>Page {{ page }} of {{ pages }}</span>
     {% if next_page %}
       <a href="/projects?page={{ next_page }}" class="text-blue-600 hover:underline">Next &raquo;</a>
-    {% else %}
-      <span></span>
-    {% endif %}
+    {% else %}<span></span>{% endif %}
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const cards = [...document.querySelectorAll('#project-grid .card')];
+const search = document.getElementById('search');
+search.oninput = e => {
+  const q = e.target.value.toLowerCase();
+  cards.forEach(c => {
+    c.style.display = c.innerText.toLowerCase().includes(q) ? '' : 'none';
+  });
+};
+
+// confirm delete
+document.querySelectorAll('.delete-form').forEach(f => {
+  f.addEventListener('submit', e => {
+    if(!confirm('Delete project?')) e.preventDefault();
+  });
+});
+</script>
 {% endblock %}

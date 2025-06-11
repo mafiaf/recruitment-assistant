@@ -1,0 +1,20 @@
+{% extends "_base.html" %}
+{% set active = "/projects" %}
+{% set page_title = "Edit Project" %}
+
+{% block body %}
+<div class="max-w-4xl mx-auto card">
+  <div class="flex items-center mb-6">
+    <a href="/projects" class="mr-4 text-2xl text-gray-600 hover:text-gray-900">&larr;</a>
+    <h2 class="text-2xl font-semibold text-indigo-600">Edit Project</h2>
+  </div>
+  <form action="/edit_project" method="post" class="space-y-6">
+    <input type="hidden" name="ts" value="{{ project.ts.isoformat() }}">
+    <div>
+      <label class="block font-medium mb-1">Description</label>
+      <textarea name="description" rows="10" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">{{ project.description }}</textarea>
+    </div>
+    <button class="px-6 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">Save</button>
+  </form>
+</div>
+{% endblock %}
