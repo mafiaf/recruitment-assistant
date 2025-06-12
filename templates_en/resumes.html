@@ -1,23 +1,23 @@
 {% extends "_base.html" %}
 {% set active = "/resumes" %}
-{% set page_title = "CV's" %}
+{% set page_title = "Résumés" %}
 
 {% block body %}
 <div class="max-w-6xl mx-auto space-y-6">
-  <input id="search" type="text" placeholder="Zoeken…" class="w-full sm:w-80 px-3 py-2 border rounded shadow-sm">
+  <input id="search" type="text" placeholder="Search…" class="w-full sm:w-80 px-3 py-2 border rounded shadow-sm">
 
   <details class="bg-white/70 backdrop-blur p-4 rounded shadow-sm" {% if skill or location or min_years or max_years %}open{% endif %}>
     <summary class="sm:hidden cursor-pointer font-medium mb-2">Filters</summary>
     <form method="get" class="filter-bar">
-      <input name="skill" value="{{ skill }}" placeholder="Vaardigheid" class="ghost-input">
-      <input name="location" value="{{ location }}" placeholder="Locatie" class="ghost-input">
-      <input name="min_years" type="number" value="{{ min_years }}" placeholder="Min jaren" class="ghost-input w-24">
-      <input name="max_years" type="number" value="{{ max_years }}" placeholder="Max jaren" class="ghost-input w-24">
-      <button class="px-3 py-2 bg-indigo-600 text-white rounded">Toepassen</button>
+      <input name="skill" value="{{ skill }}" placeholder="Skill" class="ghost-input">
+      <input name="location" value="{{ location }}" placeholder="Location" class="ghost-input">
+      <input name="min_years" type="number" value="{{ min_years }}" placeholder="Min years" class="ghost-input w-24">
+      <input name="max_years" type="number" value="{{ max_years }}" placeholder="Max years" class="ghost-input w-24">
+      <button class="px-3 py-2 bg-indigo-600 text-white rounded">Apply</button>
     </form>
     <div class="mt-2 flex flex-wrap gap-2 text-sm">
-      {% if skill %}<a href="/resumes?{{ rm_skill }}" class="chip">Vaardigheid: {{ skill }} <i class="fa-solid fa-xmark"></i></a>{% endif %}
-      {% if location %}<a href="/resumes?{{ rm_location }}" class="chip">Locatie: {{ location }} <i class="fa-solid fa-xmark"></i></a>{% endif %}
+      {% if skill %}<a href="/resumes?{{ rm_skill }}" class="chip">Skill: {{ skill }} <i class="fa-solid fa-xmark"></i></a>{% endif %}
+      {% if location %}<a href="/resumes?{{ rm_location }}" class="chip">Location: {{ location }} <i class="fa-solid fa-xmark"></i></a>{% endif %}
       {% if min_years %}<a href="/resumes?{{ rm_min_years }}" class="chip">Min: {{ min_years }} <i class="fa-solid fa-xmark"></i></a>{% endif %}
       {% if max_years %}<a href="/resumes?{{ rm_max_years }}" class="chip">Max: {{ max_years }} <i class="fa-solid fa-xmark"></i></a>{% endif %}
     </div>
@@ -36,16 +36,16 @@
         {% for t in r.tags %}<span class="chip">{{ t }}</span>{% endfor %}
       </div>
       <div class="text-xs text-gray-600 dark:text-gray-400 mb-2">
-        {{ r.file_type|upper }}{% if r.years is not none %} · {{ r.years }} jr{% endif %}
+        {{ r.file_type|upper }}{% if r.years is not none %} · {{ r.years }} yrs{% endif %}
       </div>
       <div class="actions mt-auto flex justify-end gap-3 text-sm">
-        <a href="/edit_resume?id={{ r.id }}" class="text-blue-600 hover:text-blue-800 flex items-center gap-1"><i class="fa-solid fa-pen"></i>Bewerken</a>
+        <a href="/edit_resume?id={{ r.id }}" class="text-blue-600 hover:text-blue-800 flex items-center gap-1"><i class="fa-solid fa-pen"></i>Edit</a>
         <form action="/delete_resume" method="post" class="delete-form inline">
           <input type="hidden" name="id" value="{{ r.id }}">
-          <button class="text-red-600 hover:text-red-800 flex items-center gap-1"><i class="fa-solid fa-trash"></i>Verwijderen</button>
+          <button class="text-red-600 hover:text-red-800 flex items-center gap-1"><i class="fa-solid fa-trash"></i>Delete</button>
         </form>
         <details class="inline ml-auto">
-          <summary class="cursor-pointer text-blue-600 hover:underline">voorbeeld</summary>
+          <summary class="cursor-pointer text-blue-600 hover:underline">preview</summary>
           <pre class="p-2 bg-gray-100 max-h-48 overflow-auto whitespace-pre-wrap text-xs">{{ r.text }}</pre>
         </details>
       </div>
@@ -55,11 +55,11 @@
 
   <div class="flex justify-between items-center text-sm">
     {% if prev_page %}
-      <a href="/resumes?page={{ prev_page }}{% if qs %}&{{ qs }}{% endif %}" class="text-blue-600 hover:underline">&laquo; Vorige</a>
+      <a href="/resumes?page={{ prev_page }}{% if qs %}&{{ qs }}{% endif %}" class="text-blue-600 hover:underline">&laquo; Prev</a>
     {% else %}<span></span>{% endif %}
-    <span>Pagina {{ page }} van {{ pages }}</span>
+    <span>Page {{ page }} of {{ pages }}</span>
     {% if next_page %}
-      <a href="/resumes?page={{ next_page }}{% if qs %}&{{ qs }}{% endif %}" class="text-blue-600 hover:underline">Volgende &raquo;</a>
+      <a href="/resumes?page={{ next_page }}{% if qs %}&{{ qs }}{% endif %}" class="text-blue-600 hover:underline">Next &raquo;</a>
     {% else %}<span></span>{% endif %}
   </div>
 </div>
