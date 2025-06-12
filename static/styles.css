@@ -256,6 +256,7 @@ body.dark .chat-bubble.user { color: #fff; }
   padding: 0.25rem 0.75rem;
   font-size: 0.875rem;
   background: #fff;
+  color: #1e293b;
   transition: background 0.2s ease;
 }
 .mode-btn:hover { background: #f1f5f9; }
@@ -273,6 +274,20 @@ body.dark .mode-btn.active {
   background: #3b82f6;
   color: #fff;
 }
+
+/* project attach button */
+#attach-btn {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #1e293b;
+}
+#attach-btn:hover { background: #e5e7eb; }
+body.dark #attach-btn {
+  border-color: #475569;
+  background: #1e293b;
+  color: #f1f5f9;
+}
+body.dark #attach-btn:hover { background: #334155; }
 
 @keyframes fade-slide {
   from { opacity: 0; transform: translateY(6px); }
