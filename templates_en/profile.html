@@ -20,7 +20,7 @@
       <form id="photo-form" action="/profile/photo" method="post" enctype="multipart/form-data" class="mt-4 flex items-center gap-2 justify-center sm:justify-start">
         <input type="file" name="photo" accept="image/*" required class="text-sm">
         <button class="px-3 py-1 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 flex items-center gap-2">
-          <span>Foto uploaden</span>
+          <span>Upload Photo</span>
           <i id="photo-spinner" class="fa-solid fa-spinner fa-spin hidden"></i>
         </button>
       </form>
@@ -28,16 +28,16 @@
   </div>
 
   <form id="pwd-form" action="/profile/password" method="post" class="card space-y-4 max-w-md w-full rounded-2xl shadow-lg">
-    <h3 class="text-lg font-semibold text-indigo-700">Wachtwoord wijzigen</h3>
+    <h3 class="text-lg font-semibold text-indigo-700">Change password</h3>
     <div class="relative">
-      <input name="old" type="password" placeholder="Huidig wachtwoord"
+      <input name="old" type="password" placeholder="Current password"
              class="border w-full px-3 py-2 rounded" required>
       <button type="button" class="toggle-pass absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">
         <i class="fa-solid fa-eye"></i>
       </button>
     </div>
     <div class="relative">
-      <input id="new-pass" name="new" type="password" placeholder="Nieuw wachtwoord"
+      <input id="new-pass" name="new" type="password" placeholder="New password"
              class="border w-full px-3 py-2 rounded" required>
       <button type="button" class="toggle-pass absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">
         <i class="fa-solid fa-eye"></i>
@@ -45,13 +45,13 @@
     </div>
     <div id="strength" class="text-sm text-gray-600"></div>
     <button class="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 w-full flex items-center justify-center gap-2">
-      <span>Bijwerken</span>
+      <span>Update</span>
       <i id="spinner" class="fa-solid fa-spinner fa-spin hidden"></i>
     </button>
   </form>
 
   {% if request.query_params.get('ok') %}
-  <div class="bg-green-100 text-green-800 px-4 py-2 rounded shadow" id="success-msg">Wachtwoord bijgewerkt!</div>
+  <div class="bg-green-100 text-green-800 px-4 py-2 rounded shadow" id="success-msg">Password updated!</div>
   {% endif %}
 </div>
 {% endblock %}
@@ -75,8 +75,8 @@
       if (/[A-Z]/.test(val)) score++;
       if (/[0-9]/.test(val)) score++;
       if (/[^A-Za-z0-9]/.test(val)) score++;
-      const levels = ['Zwak', 'Matig', 'Goed', 'Sterk', 'Uitstekend'];
-      strength.textContent = 'Sterkte: ' + levels[score];
+      const levels = ['Weak', 'Fair', 'Good', 'Strong', 'Excellent'];
+      strength.textContent = 'Strength: ' + levels[score];
     });
   }
 
