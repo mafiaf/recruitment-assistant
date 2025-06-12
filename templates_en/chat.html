@@ -1,0 +1,289 @@
+{# ── templates/chat.html ─────────────────────────────────────────────── #}
+{% extends "_base.html" %}
+{% set active = "/chat" %}
+{% set page_title = "Chat" %}
+
+{% block body %}
+<div class="flex h-[calc(100vh-4rem)] bg-gradient-to-br from-gray-50 to-gray-100">
+
+  {# ── sidebar ────────────────────────────────────────────────── #}
+  <aside class="w-64 border-r border-gray-200 p-4 overflow-auto bg-transparent">
+    <h2 class="font-semibold mb-2">Candidates</h2>
+    <input id="filter" type="text"
+           placeholder="filter…"
+           class="mb-3 w-full border px-2 py-1 rounded" />
+    <div id="cand-list" class="space-y-2 text-sm">
+      {% for c in candidates %}
+      <label class="candidate-item flex items-center gap-2 p-2 rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700">
+        <input type="checkbox" value="{{ c.id }}" class="candidate-box peer hidden">
+        <div class="w-8 h-8 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs avatar">{{ c.name[:1] }}</div>
+        <div class="flex-1">
+          <div class="font-medium">{{ c.name }}</div>
+          <div class="text-xs mt-1 space-x-1">
+            {% if c.location %}<span class="chip">{{ c.location }}</span>{% endif %}
+            {% for s in c.skills %}<span class="chip">{{ s }}</span>{% endfor %}
+          </div>
+        </div>
+        <button type="button" class="switch-btn hidden peer-checked:inline text-xs font-medium px-2 py-0.5 rounded">switch</button>
+      </label>
+      {% endfor %}
+    </div>
+  </aside>
+
+  {# ── main chat column ───────────────────────────────────────── #}
+  <main class="flex-1 flex flex-col h-full">
+    <div id="chat-box" class="flex-1 overflow-auto p-8 space-y-6">
+      {% for msg in history %}
+      {% if msg.role == 'assistant' %}
+      <div class="message flex items-start gap-2 max-w-prose">
+        <div class="w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center">
+          <i class="fa-solid fa-robot text-xs"></i>
+        </div>
+        <div>
+          <div class="text-xs font-semibold text-gray-600">Assistant</div>
+          <div class="chat-bubble assistant rounded-xl px-4 py-2 bg-gray-100 text-gray-800 dark:bg-blue-900 dark:text-white whitespace-pre-wrap">
+            {{ msg.content | safe }}
+          </div>
+          {% if msg.time %}<div class="text-xs text-gray-500 mt-1">{{ msg.time }}</div>{% endif %}
+        </div>
+      </div>
+      {% else %}
+      <div class="message max-w-prose ml-auto text-right">
+        <div class="chat-bubble user rounded-xl px-4 py-2 bg-blue-500 dark:bg-slate-600 whitespace-pre-wrap text-white">
+          {{ msg.content | safe }}
+        </div>
+        {% if msg.time %}<div class="text-xs text-gray-500 mt-1">{{ msg.time }}</div>{% endif %}
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+
+      {# quick prompts row #}
+      <div id="quick-prompts" class="border-t bg-white shadow-sm dark:bg-gray-800 p-4 space-y-2 text-sm">
+        {% for grp, items in quick_prompts|groupby('group') %}
+        <div class="flex items-center flex-wrap gap-2">
+          <span class="font-medium mr-1">{{ grp }}</span>
+          {% for pr in items %}
+          <button type="button" class="quick-prompt chip cursor-pointer" data-text="{{ pr.text }}" title="{{ pr.text }}">
+            <i class="{{ pr.icon }}"></i>{{ pr.title }}
+          </button>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+
+      {# chat mode toggle #}
+      <div class="border-t bg-white shadow-sm dark:bg-gray-800 p-4 flex items-center gap-2 text-sm">
+        <span class="font-medium">Chat mode:</span>
+        <input type="hidden" id="chat-mode" value="general">
+        <div id="chat-mode-group" class="flex gap-2">
+          <button type="button" data-mode="general" class="mode-btn active">General AI</button>
+          <button type="button" data-mode="ats" class="mode-btn">ATS Assistant</button>
+          <button type="button" data-mode="role" class="mode-btn">Role-based Guidance</button>
+        </div>
+      </div>
+
+      {# input row #}
+      <div class="chat-input-row border-t p-4 flex items-center gap-2">
+      <button id="attach-btn" title="Upload project"
+              class="p-2 rounded text-gray-600 hover:bg-gray-200 dark:text-white dark:hover:bg-slate-600">
+        <i class="fa-solid fa-paperclip"></i>
+      </button>
+      <input id="project-file" type="file" accept=".pdf,.docx" class="hidden">
+      <textarea id="chat-input" rows="1" placeholder="Type a message…"
+                class="flex-1 border px-3 py-2 rounded resize-none"></textarea>
+      <button id="send-btn"
+              class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+        Send
+      </button>
+    </div>
+  </main>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const qs = s => document.querySelector(s);
+const modeSel = () => qs('#chat-mode');
+let typingDiv = null;
+const timeStr = t => new Date(t).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+// ── helper: currently-selected candidate IDs ────────────────
+function selected() {
+  return [...document.querySelectorAll('.candidate-box:checked')]
+         .map(x => x.value);
+}
+
+// ── helper: append chat bubble and auto-scroll ──────────────
+function addBubble(role, html, time) {
+  const align = role === 'user' ? 'ml-auto text-right' : '';
+  const bg    = role === 'user'
+               ? 'bg-blue-500 text-white dark:bg-slate-600'
+               : 'bg-gray-100 text-gray-800 dark:bg-blue-900 dark:text-white';
+  let block;
+  if (role === 'assist') {
+    block = `<div class="message flex items-start gap-2 max-w-prose">
+                <div class="w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center">
+                  <i class="fa-solid fa-robot text-xs"></i>
+                </div>
+                <div>
+                  <div class="text-xs font-semibold text-gray-600">Assistant</div>
+                  <div class="chat-bubble assistant rounded-xl px-4 py-2 ${bg} whitespace-pre-wrap">${html}</div>
+                  ${time ? `<div class=\"text-xs text-gray-500 mt-1\">${time}</div>` : ''}
+                </div>
+              </div>`;
+  } else {
+    block = `<div class="message max-w-prose ${align}">
+               <div class="chat-bubble user rounded-xl px-4 py-2 ${bg} whitespace-pre-wrap">${html}</div>
+               ${time ? `<div class=\"text-xs text-gray-500 mt-1\">${time}</div>` : ''}
+             </div>`;
+  }
+  qs('#chat-box').insertAdjacentHTML('beforeend', block);
+  qs('#chat-box').scrollTop = qs('#chat-box').scrollHeight;
+}
+
+function showTyping() {
+  hideTyping();
+  typingDiv = document.createElement('div');
+  typingDiv.className = 'message max-w-prose';
+  typingDiv.innerHTML = `
+    <div class="chat-bubble rounded-xl px-4 py-2 bg-sky-50 dark:bg-slate-700">
+      <div class="typing-indicator"><span></span><span></span><span></span></div>
+    </div>`;
+  qs('#chat-box').appendChild(typingDiv);
+  qs('#chat-box').scrollTop = qs('#chat-box').scrollHeight;
+}
+
+function hideTyping() {
+  if (typingDiv) {
+    typingDiv.remove();
+    typingDiv = null;
+  }
+}
+
+// ── send prompt template ------------------------------------
+async function sendPrompt(raw) {
+  let finalText = raw;
+  if (raw.includes('[Insert job title]')) {
+    const title = prompt('Job title?');
+    if (title === null) return;
+    finalText = raw.replace('[Insert job title]', title);
+  }
+  const t = timeStr(Date.now());
+  addBubble('user', finalText, t);
+  showTyping();
+  const res = await fetch('/chat', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ text: finalText, candidate_ids: selected(), mode: modeSel().value })
+  });
+  const data = await res.json();
+  hideTyping();
+  addBubble('assist', data.reply, timeStr(data.time || Date.now()));
+}
+
+// ── sidebar filter ──────────────────────────────────────────
+qs('#filter').oninput = e => {
+  const v = e.target.value.toLowerCase();
+  document.querySelectorAll('#cand-list label').forEach(lb => {
+    lb.style.display = lb.innerText.toLowerCase().includes(v) ? '' : 'none';
+  });
+};
+
+// highlight selected candidates
+document.querySelectorAll('.candidate-box').forEach(cb => {
+  cb.addEventListener('change', e => {
+    const lbl = e.target.closest('label');
+    if (e.target.checked) lbl.classList.add('ring', 'ring-indigo-300', 'bg-indigo-100', 'dark:bg-slate-700');
+    else lbl.classList.remove('ring', 'ring-indigo-300', 'bg-indigo-100', 'dark:bg-slate-700');
+  });
+});
+
+// quick switch buttons
+document.querySelectorAll('.switch-btn').forEach(btn => {
+  btn.onclick = e => {
+    const parent = e.target.closest('label');
+    document.querySelectorAll('.candidate-box').forEach(cb => {
+      cb.checked = false;
+      cb.dispatchEvent(new Event('change'));
+    });
+    const cb = parent.querySelector('.candidate-box');
+    cb.checked = true;
+    cb.dispatchEvent(new Event('change'));
+  };
+});
+
+// chat mode buttons
+document.querySelectorAll('#chat-mode-group .mode-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('#chat-mode-group .mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    modeSel().value = btn.dataset.mode;
+  };
+});
+
+// ── send text message ───────────────────────────────────────
+qs('#send-btn').onclick = async () => {
+  const txt = qs('#chat-input').value.trim();
+  if (!txt) return;
+  qs('#chat-input').value = '';
+  const ut = timeStr(Date.now());
+  addBubble('user', txt, ut);
+
+  showTyping();
+
+  const res = await fetch('/chat', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ text: txt, candidate_ids: selected(), mode: modeSel().value })
+  });
+  const data = await res.json();
+  hideTyping();
+  addBubble('assist', data.reply, timeStr(data.time || Date.now()));
+};
+
+// enter to send, shift+enter newline
+qs('#chat-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    qs('#send-btn').click();
+  }
+});
+qs('#chat-input').addEventListener('input', e => {
+  e.target.style.height = 'auto';
+  e.target.style.height = e.target.scrollHeight + 'px';
+});
+
+// ── send project file ───────────────────────────────────────
+qs('#attach-btn').onclick = () => qs('#project-file').click();
+qs('#project-file').onchange = async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const fd = new FormData();
+  fd.append('file', f);
+  selected().forEach(id => fd.append('candidate_ids', id));
+  addBubble('user', '[uploaded project]', timeStr(Date.now()));
+  showTyping();
+  const html = await (await fetch('/match_project', {method: 'POST', body: fd})).text();
+  hideTyping();
+  addBubble('assist', html, timeStr(Date.now()));
+  e.target.value = '';
+};
+
+// ── quick prompt buttons ------------------------------------
+document.querySelectorAll('#quick-prompts button').forEach(btn => {
+  btn.onclick = () => sendPrompt(btn.dataset.text);
+});
+
+document.addEventListener('click', e => {
+  if(e.target.classList.contains('feedback')) {
+    e.target.style.opacity = '1';
+  }
+});
+
+// ── scroll to bottom on initial load ────────────────────────
+window.addEventListener('load', () => {
+  qs('#chat-box').scrollTop = qs('#chat-box').scrollHeight;
+});
+</script>
+{% endblock %}

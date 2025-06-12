@@ -2,11 +2,11 @@
 {% block body %}
 <div class="flex items-center justify-center min-h-[calc(100vh-4rem)]">
   <form method="post" class="w-full max-w-sm space-y-4 card">
-    <h1 class="text-2xl font-semibold text-center mb-4">Sign in</h1>
+    <h1 class="text-2xl font-semibold text-center mb-4">Inloggen</h1>
     {% if error %}<p class="text-red-600">{{ error }}</p>{% endif %}
-    <input name="username" placeholder="Username" class="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
-    <input type="password" name="password" placeholder="Password" class="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
-    <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded">Login</button>
+    <input name="username" placeholder="Gebruikersnaam" class="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+    <input type="password" name="password" placeholder="Wachtwoord" class="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+    <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded">Inloggen</button>
   </form>
 </div>
 {% endblock %}

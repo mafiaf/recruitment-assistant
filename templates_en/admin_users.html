@@ -1,18 +1,18 @@
 {% extends "_base.html" %}
-{% set page_title = "Gebruikersbeheer" %}
+{% set page_title = "User administration" %}
 {% set active = "/admin/users" %}
 
 {% block body %}
 <div class="max-w-5xl mx-auto card space-y-8">
   <div>
-    <h2 class="section-title">👥 Bestaande gebruikers</h2>
+    <h2 class="section-title">👥 Existing Users</h2>
 
     <table class="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-xl overflow-hidden shadow">
       <thead>
         <tr class="bg-gray-100 dark:bg-slate-700 text-left">
-          <th class="px-4 py-2">Gebruikersnaam</th>
-          <th class="px-2 py-2">Rol</th>
-          <th class="px-2 py-2">Acties</th>
+          <th class="px-4 py-2">Username</th>
+          <th class="px-2 py-2">Role</th>
+          <th class="px-2 py-2">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -23,9 +23,9 @@
           <td class="px-2 py-2 space-x-3 text-sm">
             <form action="/admin/users/delete" method="post" class="inline delete-user-form">
               <input type="hidden" name="username" value="{{ u.username }}">
-              <button class="icon-btn text-red-600 hover:text-red-800"><i class="fa-solid fa-trash"></i>Verwijderen</button>
+              <button class="icon-btn text-red-600 hover:text-red-800"><i class="fa-solid fa-trash"></i>Delete</button>
             </form>
-            <a href="/admin/users/{{ u.username }}/edit" class="icon-btn text-blue-600 hover:text-blue-800"><i class="fa-solid fa-pen"></i>Bewerken</a>
+            <a href="/admin/users/{{ u.username }}/edit" class="icon-btn text-blue-600 hover:text-blue-800"><i class="fa-solid fa-pen"></i>Edit</a>
           </td>
         </tr>
         {% endfor %}
@@ -34,15 +34,15 @@
   </div>
 
   <div>
-    <h2 class="section-title">➕ Nieuwe gebruiker toevoegen</h2>
+    <h2 class="section-title">➕ Add New User</h2>
     <form id="create-user-form" action="/admin/users" method="post" class="form-grid">
       <div class="relative">
         <i class="fa-solid fa-user absolute left-2 top-1/2 -translate-y-1/2 text-gray-500"></i>
-        <input name="username" placeholder="Gebruikersnaam" class="border pl-8 px-2 py-1 rounded w-full" required>
+        <input name="username" placeholder="Username" class="border pl-8 px-2 py-1 rounded w-full" required>
       </div>
       <div class="relative">
         <i class="fa-solid fa-lock absolute left-2 top-1/2 -translate-y-1/2 text-gray-500"></i>
-        <input name="password" type="password" placeholder="Wachtwoord" class="border pl-8 px-2 py-1 rounded w-full" required>
+        <input name="password" type="password" placeholder="Password" class="border pl-8 px-2 py-1 rounded w-full" required>
       </div>
       <div class="relative">
         <i class="fa-solid fa-user-tie absolute left-2 top-1/2 -translate-y-1/2 text-gray-500"></i>
@@ -51,18 +51,18 @@
         <option value="owner">owner</option>
         </select>
       </div>
-      <button class="px-4 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded transition" disabled>Aanmaken</button>
+      <button class="px-4 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded transition" disabled>Create</button>
       <p id="form-msg" class="text-sm"></p>
     </form>
   </div>
 
   <dialog id="confirm-delete" class="rounded-lg p-6 shadow-xl bg-white dark:bg-slate-800 w-80">
-    <p>Gebruiker <span id="del-name" class="font-semibold"></span> verwijderen?</p>
+    <p>Delete user <span id="del-name" class="font-semibold"></span>?</p>
     <div class="mt-4 text-right space-x-2">
-      <button type="button" id="cancel-del" class="px-3 py-1 rounded bg-gray-200">Annuleren</button>
+      <button type="button" id="cancel-del" class="px-3 py-1 rounded bg-gray-200">Cancel</button>
       <form id="del-form" action="/admin/users/delete" method="post" class="inline">
         <input type="hidden" name="username" id="del-user">
-        <button class="px-3 py-1 bg-red-600 text-white rounded">Verwijderen</button>
+        <button class="px-3 py-1 bg-red-600 text-white rounded">Delete</button>
       </form>
     </div>
   </dialog>
@@ -86,12 +86,12 @@ form.addEventListener('submit', async e => {
   const res = await fetch('/admin/users', {method:'POST', body: fd});
   if(res.ok){
     msg.className = 'text-green-600 text-sm';
-    msg.textContent = 'Gebruiker succesvol aangemaakt';
+    msg.textContent = 'User created successfully';
     setTimeout(()=>location.reload(), 700);
   }else{
-    const data = await res.json().catch(()=>({detail:'Fout'}));
+    const data = await res.json().catch(()=>({detail:'Error'}));
     msg.className = 'text-red-600 text-sm';
-    msg.textContent = data.detail || 'Fout';
+    msg.textContent = data.detail || 'Error';
   }
 });
 check();

@@ -66,12 +66,22 @@ openai.api_key = settings.OPENAI_API_KEY
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+templates_nl = Jinja2Templates(directory="templates")
+templates_en = Jinja2Templates(directory="templates_en")
 
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     return FileResponse("static/favicon.svg")
+
+
+@app.get("/set_lang/{lang}")
+def set_lang(lang: str, request: Request):
+    if lang not in {"en", "nl"}:
+        raise HTTPException(400, "Invalid language")
+    resp = RedirectResponse(request.headers.get("referer") or "/", status_code=303)
+    resp.set_cookie("lang", lang, max_age=30*24*3600, samesite="lax")
+    return resp
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -106,8 +116,10 @@ async def render(request: Request,
     ctx.setdefault("active",  active or request.url.path)
     ctx.setdefault("page_title", page_title or "")
     ctx.setdefault("user", await get_current_user(request.cookies.get(COOKIE_NAME)))
-    return templates.TemplateResponse(template_name, ctx,
-                                      status_code=status_code)
+    lang = request.cookies.get("lang", "nl")
+    ctx.setdefault("lang", lang)
+    tpl = templates_nl if lang == "nl" else templates_en
+    return tpl.TemplateResponse(template_name, ctx, status_code=status_code)
 
 async def get_user(username: str):
     return await users_coll.find_one({"username": username})

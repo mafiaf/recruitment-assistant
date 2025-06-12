@@ -1,10 +1,11 @@
-# Recruitment Assistant
+# Recruitment-assistent
 
-This FastAPI project provides recruitment-related features such as chat and resume management.
+Dit FastAPI-project biedt functies voor werving, zoals chat en cv-beheer.
+De interface kan rechtsboven worden omgeschakeld naar Engels of Nederlands.
 
-## Setup
+## Installatie
 
-Create a `.env.development` file in the project root with the following keys:
+Maak een `.env.development` bestand aan in de hoofdmap met de volgende sleutels:
 
 ```bash
 MONGO_URI=mongodb://localhost:27017
@@ -12,34 +13,29 @@ OPENAI_API_KEY=<your-openai-key>
 SESSION_SECRET=<long-random-string>
 ```
 
-When the application starts it tries to connect to MongoDB. If the connection
-is successful you will see `mongo_utils ready` in the log. If the connection
-fails the server switches to **NO‑DB** mode so you can still test other
-features.
+Wanneer de applicatie start probeert deze verbinding te maken met MongoDB. Als de verbinding lukt zie je `mongo_utils ready` in de log. Als de verbinding mislukt schakelt de server over naar **NO-DB**-modus zodat je andere functies kunt testen.
 
-## Project History
+## Projectgeschiedenis
 
-The `/projects` page lists previous project descriptions along with their ranking tables, helping track hiring decisions.
+De pagina `/projects` toont eerdere projectbeschrijvingen met hun ranglijsten om wervingsbeslissingen te volgen.
 
-## Running Tests
+## Tests uitvoeren
 
-1. Install Python dependencies (requires network access):
+1. Installeer Python-afhankelijkheden (vereist netwerktoegang):
 
 ```bash
 pip install -r requirements.txt
 pip install pytest
 ```
 
-2. Execute the test suite with:
+2. Voer de testreeks uit met:
 
 ```bash
 pytest
 ```
 
-The tests use FastAPI's `TestClient` and check the login flow.
+De tests gebruiken FastAPI's `TestClient` en controleren het login-proces.
 
-## Session Cookies
+## Sessiecookies
 
-Session cookies are signed using `itsdangerous`. When `ENV` is set to
-`production`, cookies are marked as `Secure` so browsers only send them over
-HTTPS.
+Sessiecookies worden ondertekend met `itsdangerous`. Wanneer `ENV` op `production` staat worden cookies gemarkeerd als `Secure` zodat browsers ze alleen via HTTPS versturen.
