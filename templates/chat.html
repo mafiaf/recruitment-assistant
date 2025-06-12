@@ -59,7 +59,7 @@
     </div>
 
       {# quick prompts row #}
-      <div id="quick-prompts" class="border-t bg-gray-100 shadow-sm dark:bg-gray-800 p-4 space-y-2 text-sm">
+      <div id="quick-prompts" class="border-t bg-gray-100 shadow-sm dark:bg-gray-800 p-4 space-y-2 text-sm text-gray-800 dark:text-white">
         {% for grp, items in quick_prompts|groupby('group') %}
         <div class="flex items-center flex-wrap gap-2">
           <span class="font-medium mr-1">{{ grp }}</span>
@@ -73,7 +73,7 @@
       </div>
 
       {# chat mode toggle #}
-      <div class="border-t bg-gray-100 shadow-sm dark:bg-gray-800 p-4 flex items-center gap-2 text-sm">
+      <div class="mode-row border-t bg-gray-100 shadow-sm dark:bg-gray-800 p-4 flex items-center gap-2 text-sm text-gray-800 dark:text-white">
         <span class="font-medium">Chat mode:</span>
         <input type="hidden" id="chat-mode" value="general">
         <div id="chat-mode-group" class="flex gap-2">
@@ -84,9 +84,9 @@
       </div>
 
       {# input row #}
-      <div class="chat-input-row border-t p-4 flex items-center gap-2">
+      <div class="chat-input-row border-t p-4 flex items-center gap-2 text-gray-800 dark:text-white">
       <button id="attach-btn" title="Upload project"
-              class="p-2 rounded text-gray-600 hover:bg-gray-200 dark:text-white dark:hover:bg-slate-600">
+              class="p-2 rounded text-gray-800 hover:bg-gray-200 dark:text-white dark:hover:bg-slate-600">
         <i class="fa-solid fa-paperclip"></i>
       </button>
       <input id="project-file" type="file" accept=".pdf,.docx" class="hidden">
