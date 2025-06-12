@@ -27,7 +27,7 @@ The `/projects` page lists previous project descriptions along with their rankin
 
 ```bash
 pip install -r requirements.txt
-pip install pytest
+pip install pytest pytest-asyncio
 ```
 
 2. Execute the test suite with:
