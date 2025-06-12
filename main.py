@@ -11,6 +11,21 @@ from bson import ObjectId
 
 import mammoth
 import numpy as np
+import math
+
+# Fallback minimal numpy implementation for the test environment
+if not hasattr(np, "asarray"):
+    def _asarray(seq):
+        return list(seq)
+    def _dot(a, b):
+        return sum(x*y for x, y in zip(a, b))
+    class _Linalg:
+        @staticmethod
+        def norm(v):
+            return math.sqrt(sum(x*x for x in v))
+    np.asarray = _asarray
+    np.dot = _dot
+    np.linalg = _Linalg()
 import openai
 import pdfplumber
 import PyPDF2

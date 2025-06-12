@@ -177,7 +177,7 @@ async def chat(request: Request, chat_data: ChatRequest = Body(...), user=Depend
         {"role": "assistant", "content": assistant_reply, "time": ts},
     ])
     await main.chat_upsert(user_id, {"messages": history})
-    return {"reply": safe_reply, "time": ts}
+    return JSONResponse({"reply": safe_reply, "time": ts})
 
 @router.post("/chat_action", response_class=HTMLResponse)
 async def chat_action(
