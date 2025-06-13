@@ -17,7 +17,7 @@
         <span class="text-xs date-label">{{ p.ts.strftime('%Y-%m-%d') }}</span>
       </div>
       <div class="text-xs flex flex-wrap gap-1 mb-2">
-        {% for c in p.candidates %}<span class="chip">{{ c.name }}</span>{% endfor %}
+        {% for c in p.candidates %}<span class="chip">{{ c.name }} {{ c.fit }}%</span>{% endfor %}
       </div>
       <button type="button" class="open-details text-blue-600 hover:underline flex items-center gap-1 mb-2"><i class="fa-solid fa-eye"></i>Details bekijken</button>
       <div class="hidden full-details">
