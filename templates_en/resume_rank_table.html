@@ -7,10 +7,6 @@
         <span title="Cosine-based match score adjusted by ±15 pts">Fit&nbsp;%</span>
       </th>
 
-      <th class="border-b border-gray-300 dark:border-gray-700 px-4 py-2 text-center">
-        {% if expected_years %}Years/{{ expected_years }}{% else %}Years{% endif %}
-      </th>
-
       <th class="border-b border-gray-300 dark:border-gray-700 px-4 py-2 text-left">Why Fit?</th>
       <th class="border-b border-gray-300 dark:border-gray-700 px-4 py-2 text-left">Improve</th>
     </tr>
@@ -20,12 +16,14 @@
     <tr class="even:bg-gray-50 dark:even:bg-white/5 {{ 'bg-green-900/30' if row.fit|float >= 75 else 'bg-yellow-900/30' if row.fit|float >= 60 else 'bg-red-900/30' }}">
       <td class="border-b border-gray-200 dark:border-gray-700 px-4 py-2 font-medium">{{ row.name }}</td>
       <td class="border-b border-gray-200 dark:border-gray-700 px-4 py-2 text-center font-semibold text-indigo-600 dark:text-indigo-300">{{ row.fit }}</td>
-      <td class="border-b border-gray-200 dark:border-gray-700 px-4 py-2 text-center">{{ row.years }}</td>
-
       <td class="border-b border-gray-200 dark:border-gray-700 px-4 py-2">{{ row.why }}</td>
       <td class="border-b border-gray-200 dark:border-gray-700 px-4 py-2">{{ row.improve }}</td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
+<p class="text-xs text-gray-600 dark:text-gray-300 mt-2">
+  Fit % shows how well the résumé matches the project. The score is based on
+  cosine similarity and can be adjusted by ±15 points.
+</p>
 </div>
