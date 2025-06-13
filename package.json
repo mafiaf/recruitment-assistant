@@ -1,0 +1,27 @@
+{
+  "name": "recruitment-assistant",
+  "version": "1.0.0",
+  "description": "Dit FastAPI-project biedt functies voor werving, zoals chat en cv-beheer.\r De interface kan rechtsboven worden omgeschakeld naar Engels of Nederlands.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "build:css": "tailwindcss.exe -i input.css -o static/output.css --minify",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mafiaf/recruitment-assistant.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mafiaf/recruitment-assistant/issues"
+  },
+  "homepage": "https://github.com/mafiaf/recruitment-assistant#readme",
+  "devDependencies": {
+    "tailwindcss": "^4.1.10"
+  }
+}
