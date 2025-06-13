@@ -90,6 +90,7 @@
         <i class="fa-solid fa-paperclip"></i>
       </button>
       <input id="project-file" type="file" accept=".pdf,.docx" class="hidden">
+      <input id="priority-skills" type="text" placeholder="Priority skills" class="border px-2 py-1 rounded w-40">
       <textarea id="chat-input" rows="1" placeholder="Type a message…"
                 class="flex-1 border px-3 py-2 rounded resize-none"></textarea>
       <button id="send-btn"
@@ -262,6 +263,8 @@ qs('#project-file').onchange = async e => {
   const fd = new FormData();
   fd.append('file', f);
   selected().forEach(id => fd.append('candidate_ids', id));
+  const skills = qs('#priority-skills').value.trim();
+  if (skills) fd.append('priority_skills', skills);
   addBubble('user', '[uploaded project]', timeStr(Date.now()));
   showTyping();
   const html = await (await fetch('/match_project', {method: 'POST', body: fd})).text();
