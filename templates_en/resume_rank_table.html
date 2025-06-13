@@ -3,7 +3,9 @@
   <thead class="bg-gray-100 dark:bg-gray-800">
     <tr>
       <th class="border-b border-gray-300 dark:border-gray-700 px-4 py-2 text-left">Candidate</th>
-      <th class="border-b border-gray-300 dark:border-gray-700 px-4 py-2 text-center font-semibold text-indigo-600 dark:text-indigo-300">Fit&nbsp;%</th>
+      <th class="border-b border-gray-300 dark:border-gray-700 px-4 py-2 text-center font-semibold text-indigo-600 dark:text-indigo-300">
+        <span title="Cosine-based match score adjusted by ±15 pts">Fit&nbsp;%</span>
+      </th>
 
       <th class="border-b border-gray-300 dark:border-gray-700 px-4 py-2 text-center">
         {% if expected_years %}Years/{{ expected_years }}{% else %}Years{% endif %}
