@@ -529,6 +529,7 @@ async def match_project(
     description: str = Form(""),
     file: UploadFile = File(None),
     candidate_ids: Optional[List[str]] = Form(None),
+    priority_skills: str = Form(""),
 ):
     session_user = await get_current_user(request.cookies.get(COOKIE_NAME))
     user_id = session_user["username"] if session_user else "anon"
@@ -653,6 +654,13 @@ async def match_project(
     )
     if expected_years:
         rubric += f"\n\nDoelervaring: circa {expected_years} jaar"
+    rubric += (
+        "\n\nGebruik concrete voorbeelden uit het cv; "
+        "vervang vage zinnen als 'ervaring met digitalisering en informatiebeveiliging' "
+        "door specifieke prestaties (bv. 'heeft ISO 27001 geïmplementeerd bij X')."
+    )
+    if priority_skills.strip():
+        rubric += f"\n\nLeg extra nadruk op: {priority_skills.strip()}"
 
     prompt = (
         f"Projectbeschrijving (focus op rol / domein / ervaring):\n"
