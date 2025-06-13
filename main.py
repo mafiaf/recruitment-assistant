@@ -685,7 +685,10 @@ async def match_project(
         if not ln.startswith("|"):
             continue
         # skip header and alignment
-        if ln.lower().startswith("| candidate") or alignment_re.match(ln):
+        ln_l = ln.lower()
+        if (ln_l.startswith("| candidate") or
+                ln_l.startswith("| kandidaat") or
+                alignment_re.match(ln)):
             continue
 
         cells = [c.strip() for c in ln.split("|")[1:-1]]
