@@ -543,15 +543,21 @@ async def match_project(
             description = "\n".join(p.text for p in doc.paragraphs)
 
     if not description.strip():
-        return templates.TemplateResponse(
-            "index.html", {"request": request, "popup": "Project description is empty."}
+        return await render(
+            request,
+            "index.html",
+            {"popup": "Project description is empty."},
+            page_title="Home",
         )
 
     # ensure we get a simple list when numpy is stubbed during tests
     proj_vec = np.array(embed_text(description))
     if proj_vec is None:
-        return templates.TemplateResponse(
-            "index.html", {"request": request, "popup": "Failed to embed project."}
+        return await render(
+            request,
+            "index.html",
+            {"popup": "Failed to embed project."},
+            page_title="Home",
         )
 
     # 2️⃣ choose candidate set -----------------------------------------------
@@ -592,8 +598,11 @@ async def match_project(
 
     matches = sorted(matches, key=lambda m: m.sim_pct, reverse=True)[:5]
     if not matches:
-        return templates.TemplateResponse(
-            "index.html", {"request": request, "popup": "No candidates found."}
+        return await render(
+            request,
+            "index.html",
+            {"popup": "No candidates found."},
+            page_title="Home",
         )
 
     # 4️⃣ build GPT prompt ----------------------------------------------------
@@ -700,7 +709,9 @@ async def match_project(
     if not rows:
         table_html = "<pre style='white-space:pre-wrap'>" + table_md + "</pre>"
     else:
-        table_html = templates.get_template("resume_rank_table.html").render(
+        lang = request.cookies.get("lang", "nl")
+        tpl = templates_nl if lang == "nl" else templates_en
+        table_html = tpl.get_template("resume_rank_table.html").render(
             rows=rows,
             expected_years=expected_years,
         )
