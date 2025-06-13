@@ -10,61 +10,60 @@ router = APIRouter()
 # default set of quick prompt templates shown in the chat UI
 QUICK_PROMPTS = [
     {
-        "title": "Resume Audit",
+        "title": "Cv-audit",
         "text": (
-            "Act like a recruiter with 10+ years' experience. "
-            "Review this resume and tell me exactly why it's getting ignored. "
-            "Be Direct. No sugarcoating. Point out what's weak and how to fix it."
+            "Doe alsof je een recruiter bent met meer dan 10 jaar ervaring. "
+            "Bekijk dit cv en vertel me precies waarom het wordt genegeerd. "
+            "Wees direct, geen mooipraterij. Benoem wat zwak is en hoe het beter kan."
         ),
         "icon": "fa-solid fa-magnifying-glass",
         "group": "Audit",
     },
     {
-        "title": "ATS Optimization",
+        "title": "ATS-optimalisatie",
         "text": (
-            "Rewrite my resume to be 100% complient ATS-optimized for a "
-            "[Insert job title] role. Add industry-specific keywords, skills, "
-            "and quantify my achievements - without sounding robotic."
+            "Herschrijf mijn cv volledig ATS-proof voor de functie "
+            "[voeg functietitel in]. Voeg branchespecifieke trefwoorden en vaardigheden toe "
+            "en kwantificeer mijn resultaten zonder robotachtig te klinken."
         ),
         "icon": "fa-solid fa-chart-line",
         "group": "Rewrite",
     },
     {
-        "title": "Job Match customization",
+        "title": "Vacature-afstemming",
         "text": (
-            "Take this job description and align my resume with it line by line. "
-            "Match tone, skills, and results to what they're asking for - keep it "
-            "sharp and honest"
+            "Neem deze vacaturetekst en stem mijn cv er regel voor regel op af. "
+            "Laat toon, vaardigheden en resultaten aansluiten op hun wensen – scherp en eerlijk."
         ),
         "icon": "fa-solid fa-link",
         "group": "Rewrite",
     },
     {
-        "title": "Confidence rewrite",
+        "title": "Zelfverzekerde herschrijving",
         "text": (
-            "Rewrite my resume to sound bold and high-performing. "
-            "No passive language. Make it outcome-driven and confident - "
-            "like someone any company would want to hire."
+            "Herschrijf mijn cv zodat het krachtig en prestatiegericht klinkt. "
+            "Geen passieve formuleringen. Maak het resultaatgericht en zelfverzekerd, "
+            "alsof iedere werkgever me wil aannemen."
         ),
         "icon": "fa-solid fa-pen",
         "group": "Rewrite",
     },
     {
-        "title": "Cover letter writer",
+        "title": "Sollicitatiebrief",
         "text": (
-            "Write me a concise (Under 200), Human-sounding cover letter for this "
-            "role: [Insert job title]. Show excitement, competence and focus on "
-            "the value I bring."
+            "Schrijf een beknopte (onder 200 woorden) en menselijk klinkende sollicitatiebrief "
+            "voor deze functie: [voeg functietitel in]. Toon enthousiasme, competentie en benadruk "
+            "de waarde die ik bied."
         ),
         "icon": "fa-solid fa-envelope",
         "group": "Rewrite",
     },
     {
-        "title": "Interview rehearsal",
+        "title": "Interview-oefening",
         "text": (
-            "Give me 10 most common behavioral interview questions for a "
-            "[Insert job title] role and answer each one using the STAR format "
-            "with specific, impressive examples"
+            "Geef me de 10 meest voorkomende gedragsvragen voor de functie "
+            "[voeg functietitel in] en beantwoord ze volgens de STAR-methode "
+            "met concrete, sterke voorbeelden"
         ),
         "icon": "fa-solid fa-comments",
         "group": "Interview",
@@ -75,19 +74,16 @@ QUICK_PROMPTS = [
 # System prompts for each chat mode
 MODE_PROMPTS = {
     "general": (
-        "You are a recruitment assistant who can answer follow-up questions "
-        "about the project and the candidate résumés provided. Keep responses "
-        "helpful and on topic."
+        "Je bent een wervingsassistent die vervolgvragen kan beantwoorden over het project "
+        "en de aangeleverde cv's. Houd je antwoorden behulpzaam en to the point en reageer in het Nederlands."
     ),
     "ats": (
-        "You are an ATS optimization expert. Focus on rewriting résumés so "
-        "they perform well in Applicant Tracking Systems while staying within "
-        "the provided project and résumé context."
+        "Je bent een ATS-optimalisatie-expert. Reageer in het Nederlands en richt je op het herschrijven van cv's "
+        "zodat ze goed scoren in Applicant Tracking Systems, binnen de context van het project en de cv's."
     ),
     "role": (
-        "You are a career coach specializing in role-specific advice. Use the "
-        "project information and résumés to give targeted guidance for the "
-        "chosen job title."
+        "Je bent een loopbaancoach gespecialiseerd in functiegericht advies. Gebruik de projectinformatie en cv's "
+        "om gerichte begeleiding te geven en antwoord steeds in het Nederlands."
     ),
 }
 
@@ -120,7 +116,7 @@ async def chat_interface(request: Request, user=Depends(main.require_login)):
     if not safe_history:
         safe_history.append({
             "role": "assistant",
-            "content": "Hi! What do you want to do today?",
+            "content": "Hallo! Wat wil je vandaag doen?",
             "time": datetime.utcnow().isoformat(timespec="seconds"),
         })
     return await main.render(
