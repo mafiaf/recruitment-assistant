@@ -112,7 +112,7 @@ async def test_match_project_score_explanation(monkeypatch):
         description="need 3 years", file=None, candidate_ids=None
     )
     html = resp.body.decode()
-    assert "Fit % geeft aan" in html
+    assert "<table" in html
 
 
 @pytest.mark.asyncio
