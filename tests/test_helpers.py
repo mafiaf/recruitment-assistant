@@ -113,3 +113,53 @@ async def test_match_project_years_column(monkeypatch):
     )
     assert "2/3" in resp.body.decode()
 
+
+@pytest.mark.asyncio
+async def test_match_project_dutch_header(monkeypatch):
+    table = (
+        "| Kandidaat | Fit % | Waarom geschikt? | Verbeter |\n"
+        "|:--|:--:|:--|:--|\n"
+        "| Alice | 90 | ok | - |\n"
+        "| Bob | 80 | ok | - |"
+    )
+    fake_openai = types.SimpleNamespace(
+        chat=types.SimpleNamespace(
+            completions=types.SimpleNamespace(
+                create=lambda **kw: types.SimpleNamespace(
+                    choices=[types.SimpleNamespace(message=types.SimpleNamespace(content=table))]
+                )
+            )
+        )
+    )
+    monkeypatch.setattr(main, "openai", fake_openai)
+    monkeypatch.setattr(main, "embed_text", lambda text: [0.0] * 1536)
+
+    class DummyMatch:
+        def __init__(self, name):
+            self.id = name
+            self.values = [0.0] * 1536
+            self.metadata = {"name": name, "text": "resume"}
+
+    class DummyIndex:
+        def query(self, *a, **k):
+            return types.SimpleNamespace(matches=[
+                DummyMatch("Alice"),
+                DummyMatch("Bob"),
+            ])
+
+    monkeypatch.setattr(main, "index", DummyIndex())
+    monkeypatch.setattr(main, "add_project_history", lambda *a, **k: None)
+    async def _req_login():
+        return {"username": "u"}
+    async def _cur_user(*a, **k):
+        return {"username": "u"}
+    monkeypatch.setattr(main, "require_login", _req_login)
+    monkeypatch.setattr(main, "get_current_user", _cur_user)
+
+    resp = await main.match_project(
+        DummyRequest("/match"),
+        description="project", file=None, candidate_ids=None
+    )
+    html = resp.body.decode()
+    assert html.count("<tr>") == 3
+
