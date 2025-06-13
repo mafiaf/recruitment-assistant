@@ -225,6 +225,21 @@ def extract_text(data: bytes, filename: str) -> str:
         return extract_text_from_docx(data)
     return ""
 
+
+def parse_optional_int(val: str | int | None) -> int | None:
+    """Convert form input to int or None."""
+    if isinstance(val, int):
+        return val
+    if val is None:
+        return None
+    s = str(val).strip()
+    if not s:
+        return None
+    try:
+        return int(s)
+    except ValueError:
+        return None
+
 # ═════════════════════════════════════════════════════════════════════════════
 # Routes – basic pages
 # ═════════════════════════════════════════════════════════════════════════════
@@ -317,7 +332,7 @@ async def upload_resume(
     text: str | None = Form(None),
     skills: str | None = Form(None),
     location: str | None = Form(None),
-    years: int | None = Form(None),
+    years: str | None = Form(None),
     tags: str | None = Form(None),
     resume: ResumeUpload | None = Body(None),
     user=Depends(require_login),
@@ -347,7 +362,7 @@ async def upload_resume(
         skill_list = parse_skills(resume.skills)
         tag_list = parse_tags(resume.tags)
         loc_val = resume.location or location or ""
-        years_val = resume.years if resume.years is not None else years
+        years_val = parse_optional_int(resume.years if resume.years is not None else years)
 
         if not text:
             return await render(
@@ -396,7 +411,7 @@ async def upload_resume(
         skill_list = parse_skills(skills)
         tag_list = parse_tags(tags)
         loc_val = location or ""
-        years_val = years
+        years_val = parse_optional_int(years)
 
         if not files and text:
             # fallback: text field without file
@@ -985,16 +1000,21 @@ async def update_resume_route(
         text: str      = Form(...),
         skills: str    = Form(""),
         location: str  = Form(""),
-        years: int | None = Form(None),
+        years: str = Form(""),
         tags: str = Form("")):
     skill_list = [s.strip() for s in skills.split(',') if s.strip()]
     tag_list = [t.strip() for t in tags.split(',') if t.strip()]
     loc_val = location or None
-    modified = await update_resume(resume_id, name, text,
-                                   skill_list if skills else None,
-                                   loc_val,
-                                   years,
-                                   tag_list if tags else None)
+    years_val = parse_optional_int(years)
+    modified = await update_resume(
+        resume_id,
+        name,
+        text,
+        skill_list if skills else None,
+        loc_val,
+        years_val,
+        tag_list if tags else None,
+    )
     if not modified:
         logger.warning("Nothing updated for resume_id %s", resume_id)
     return RedirectResponse("/resumes", status_code=303)
