@@ -632,7 +632,7 @@ async def match_project(
     candidates_block = "\n".join(snippets)
 
     header = (
-        "| Candidate | Fit % | Why Fit? (≤90 w.) | Improve (≤45 w.) |\n"
+        "| Kandidaat | Fit % | Waarom geschikt? (≤90 w.) | Verbeter (≤45 w.) |\n"
         "|:--|:--:|:--|:--|\n"          # ← keep this on the *same* assignment
     )
     rows_md = "\n".join(
@@ -640,35 +640,35 @@ async def match_project(
     )
 
     rubric = (
-        "### Scoring rules\n"
-        "* 90-100 % = near-perfect match of role, domain, experience\n"
-        "* 70-89 %  = strong match, minor gaps\n"
-        "* 40-69 %  = partial match, clear gaps\n"
-        "* below 40 % = weak match\n\n"
-        "The **Fit %** column already contains a cosine baseline. "
-        "You may adjust it **±15 points max** if the résumé clearly warrants.  \n"
-        "**For “Improve”** give **one concrete, resume-focused action**: "
-        "what to **add**, **reword**, **reorder** or **strengthen** in their résumé "
-        "(new bullet, certification, project, keywords) to boost their fit."
+        "### Beoordelingsregels\n"
+        "* 90-100 % = vrijwel perfecte match van rol, domein en ervaring\n"
+        "* 70-89 %  = sterke match, kleine hiaten\n"
+        "* 40-69 %  = gedeeltelijke match, duidelijke hiaten\n"
+        "* lager dan 40 % = zwakke match\n\n"
+        "De kolom **Fit %** bevat al een cosine-basis. "
+        "Pas deze hooguit **±15 punten** aan als het cv daar duidelijk om vraagt.  \n"
+        "**Voor “Verbeter”** geef **één concrete cv-actie**: "
+        "wat moet worden **toegevoegd**, **herformuleerd**, **herordend** of **versterkt** "
+        "(nieuw project, certificaat, trefwoorden) om de fit te verhogen."
     )
     if expected_years:
-        rubric += f"\n\nTarget experience: around {expected_years} years"
+        rubric += f"\n\nDoelervaring: circa {expected_years} jaar"
 
     prompt = (
-        f"Project description (focus on role / domain / experience):\n"
+        f"Projectbeschrijving (focus op rol / domein / ervaring):\n"
         f"{description.replace(chr(10),' ')}\n\n"
-        "Candidate snippets:\n"
+        "Kandidaatfragmenten:\n"
         f"{candidates_block}\n\n"
         f"{rubric}\n\n"
-        "Fill ONLY the blank cells in this Markdown table. "
-        "Maintain exactly these 4 columns; no extra rows or commentary.\n\n"
+        "Vul ALLEEN de lege cellen in deze Markdown-tabel in. "
+        "Houd precies deze 4 kolommen aan; geen extra rijen of commentaar.\n\n"
         f"{header}{rows_md}"
     )
 
     resp = openai.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
-            {"role": "system", "content": "You are a rigorous recruitment assistant."},
+            {"role": "system", "content": "Je bent een rigoureuze wervingsassistent. Antwoord in het Nederlands."},
             {"role": "user",   "content": prompt},
         ],
         temperature=0.1,
