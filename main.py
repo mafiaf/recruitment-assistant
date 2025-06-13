@@ -609,7 +609,6 @@ async def match_project(
     # 4️⃣ build GPT prompt ----------------------------------------------------
     expected_years = extract_years_requirement(description)
     snippets = []
-    years_info = []
     for m in matches:
         tags_str = ", ".join(m.metadata.get('tags', []))
         tag_part = f" [tags: {tags_str}]" if tags_str else ""
@@ -617,13 +616,10 @@ async def match_project(
 
         if expected_years and years is not None:
             years_part = f" ({years}/{expected_years} yrs)"
-            years_info.append(f"{years}/{expected_years}")
         elif years is not None:
             years_part = f" ({years} yrs)"
-            years_info.append(str(years))
         else:
             years_part = ""
-            years_info.append("—" if expected_years else "—")
 
         snippet = (
             f"- **{m.metadata['name']}**{years_part}{tag_part}: "
@@ -712,11 +708,6 @@ async def match_project(
                 }
             )
 
-    # add experience column if lengths match
-    if rows and len(rows) == len(years_info):
-        for r, y in zip(rows, years_info):
-            r["years"] = y
-
     # fallback – if parsing still fails just show raw markdown
     if not rows:
         table_html = "<pre style='white-space:pre-wrap'>" + table_md + "</pre>"
@@ -725,15 +716,14 @@ async def match_project(
         tpl = templates_nl if lang == "nl" else templates_en
         table_html = tpl.get_template("resume_rank_table.html").render(
             rows=rows,
-            expected_years=expected_years,
         )
         if not table_html.strip():
             # simple fallback when Jinja templates are stubbed during tests
-            header_cells = ["Candidate", "Fit %", "Yrs" + (f"/{expected_years}" if expected_years else ""), "Why Fit?", "Improve"]
+            header_cells = ["Candidate", "Fit %", "Why Fit?", "Improve"]
             header = "<tr>" + "".join(f"<th>{c}</th>" for c in header_cells) + "</tr>"
             rows_html = "".join(
                 "<tr>" + "".join(
-                    f"<td>{r.get(k, '')}</td>" for k in ["name", "fit", "years", "why", "improve"]
+                    f"<td>{r.get(k, '')}</td>" for k in ["name", "fit", "why", "improve"]
                 ) + "</tr>" for r in rows
             )
             table_html = f"<table>{header}{rows_html}</table>"

@@ -66,7 +66,7 @@ def test_extract_years_requirement():
 
 
 @pytest.mark.asyncio
-async def test_match_project_years_column(monkeypatch):
+async def test_match_project_score_explanation(monkeypatch):
     table = (
         "| Candidate | Fit % | Why Fit? | Improve |\n"
         "|:--|:--:|:--|:--|\n"
@@ -111,7 +111,8 @@ async def test_match_project_years_column(monkeypatch):
         DummyRequest("/match"),
         description="need 3 years", file=None, candidate_ids=None
     )
-    assert "2/3" in resp.body.decode()
+    html = resp.body.decode()
+    assert "Fit % geeft aan" in html
 
 
 @pytest.mark.asyncio
