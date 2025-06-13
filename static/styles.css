@@ -58,9 +58,6 @@ body.dark textarea::placeholder {
   color: #bbb;
 }
 
-# ensure chat input text is dark in light mode
-# dark mode already handled above
-# -------------------------------------
 #chat-input {
   color: #000;
 }
