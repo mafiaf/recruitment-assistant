@@ -745,12 +745,15 @@ async def match_project(
         "table_md": table_md,
         "table_html": table_html,
         "candidates": [
-            {"name": m.metadata["name"],
-             "fit": m.sim_pct,
-             "text": m.metadata["text"]}
+            {
+                "id": m.id,
+                "name": m.metadata["name"],
+                "fit": m.sim_pct,
+                "text": m.metadata["text"],
+            }
             for m in matches
         ],
-    }
+   }
 
     res = add_project_history(user_id, project)
     if inspect.isawaitable(res):
@@ -814,6 +817,7 @@ async def list_resumes(
                 "years": d.get("years"),
                 "file_type": d.get("file_type", ""),
                 "added": added,
+                "projects": [p.isoformat() if hasattr(p, "isoformat") else p for p in d.get("projects", [])],
             }
         )
 
