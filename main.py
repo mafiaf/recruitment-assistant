@@ -54,6 +54,7 @@ from mongo_utils import (
 from pymongo import errors
 from pinecone_utils import (
     add_resume_to_pinecone,
+    add_project_to_pinecone,
     embed_text,
     index,
     search_best_resumes,
@@ -756,6 +757,10 @@ async def match_project(
         ],
         "status": "active",
     }
+    ts = datetime.utcnow()
+    project["ts"] = ts
+    project_id = f"{user_id}:{ts.isoformat()}"
+    add_project_to_pinecone(description, project_id, {"user_id": user_id})
 
     res = add_project_history(user_id, project)
     if inspect.isawaitable(res):

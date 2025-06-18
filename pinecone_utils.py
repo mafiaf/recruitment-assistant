@@ -46,6 +46,7 @@ def embed_text(text: str):
 
 
 DEFAULT_NAMESPACE = "resumes"  # namespace stays the same in both envs
+PROJECT_NAMESPACE = "projects"
 
 
 def add_resume_to_pinecone(
@@ -122,3 +123,76 @@ def delete_resume_from_pinecone(resume_id: str, namespace: str = DEFAULT_NAMESPA
         logger.info("Deleted from Pinecone: %s", resume_id)
     except Exception as e:
         logger.error("Error deleting from Pinecone: %s - %s", resume_id, e)
+
+
+def add_project_to_pinecone(
+    text: str,
+    project_id: str,
+    metadata: dict | None = None,
+    namespace: str = PROJECT_NAMESPACE,
+):
+    """Insert or update a project vector in Pinecone."""
+    metadata = metadata.copy() if metadata else {}
+    vector = embed_text(text)
+    if not vector or len(vector) != 1536:
+        logger.warning(
+            "Invalid embedding length: %s",
+            len(vector) if vector else "None",
+        )
+        return
+
+    try:
+        logger.info(
+            "Upserting to index '%s' namespace '%s': %s",
+            INDEX_NAME,
+            namespace,
+            project_id,
+        )
+        index.upsert(
+            vectors=[{
+                "id": project_id,
+                "values": vector,
+                "metadata": metadata,
+            }],
+            namespace=namespace,
+        )
+        logger.info("Upsert complete")
+    except Exception as e:
+        logger.error("Pinecone upsert failed: %s", e)
+
+
+def search_best_projects(
+    query: str,
+    top_k: int = 5,
+    namespace: str = PROJECT_NAMESPACE,
+):
+    """Return top_k project matches for the given text."""
+    vector = embed_text(query)
+    if not vector:
+        return []
+    try:
+        results = index.query(
+            vector=vector,
+            top_k=top_k,
+            include_metadata=True,
+            namespace=namespace,
+        )
+        return results.matches
+    except Exception as e:
+        logger.error("Pinecone search failed: %s", e)
+        return []
+
+
+def delete_project_from_pinecone(project_id: str, namespace: str = PROJECT_NAMESPACE):
+    """Delete a project vector by id."""
+    try:
+        logger.info(
+            "Deleting from index '%s' namespace '%s': %s",
+            INDEX_NAME,
+            namespace,
+            project_id,
+        )
+        index.delete(ids=[project_id], namespace=namespace)
+        logger.info("Deleted from Pinecone: %s", project_id)
+    except Exception as e:
+        logger.error("Error deleting from Pinecone: %s - %s", project_id, e)
