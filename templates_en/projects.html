@@ -5,6 +5,13 @@
 {% block body %}
 <div class="max-w-6xl mx-auto space-y-6">
   <input id="search" type="text" placeholder="Search…" class="w-full sm:w-80 px-3 py-2 border rounded shadow-sm">
+  <div>
+    {% if active_only %}
+      <a href="/projects" class="chip">All projects <i class="fa-solid fa-xmark"></i></a>
+    {% else %}
+      <a href="/projects?active=1" class="chip">Active only</a>
+    {% endif %}
+  </div>
 
   {% if projects %}
   <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" id="project-grid">
@@ -14,7 +21,12 @@
         <h2 class="font-semibold break-words mr-2 project-snippet">
           {{ p.description[:200] }}{% if p.description|length > 200 %}&hellip;{% endif %}
         </h2>
-        <span class="text-xs date-label">{{ p.ts.strftime('%Y-%m-%d') }}</span>
+        <div class="flex flex-col items-end gap-1">
+          <span class="text-xs date-label">{{ p.ts.strftime('%Y-%m-%d') }}</span>
+          <span class="status-badge {{ p.status or 'active' }}">
+            {{ 'Active' if p.status != 'archived' else 'Archived' }}
+          </span>
+        </div>
       </div>
       <div class="text-xs flex flex-wrap gap-1 mb-2">
         {% for c in p.candidates %}<span class="chip">{{ c.name }} {{ c.fit }}%</span>{% endfor %}

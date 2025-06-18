@@ -340,3 +340,18 @@ async def update_project_description(
         {"$set": {"projects.$.description": description}},
     )
     return res.modified_count
+
+
+async def update_project_status(user_id: str, ts_iso: str, status: str) -> int:
+    """Update status for a stored project."""
+    if await _guard("update_project_status"):
+        return 0
+    try:
+        ts = datetime.fromisoformat(ts_iso)
+    except ValueError:
+        return 0
+    res = await chats.update_one(
+        {"user_id": user_id, "projects.ts": ts},
+        {"$set": {"projects.$.status": status}},
+    )
+    return res.modified_count
