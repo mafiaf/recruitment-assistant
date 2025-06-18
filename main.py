@@ -843,6 +843,37 @@ async def list_resumes(
         docs = []
         total = 0
 
+    session_user = await get_current_user(request.cookies.get(COOKIE_NAME))
+    user_id = session_user["username"] if session_user else "anon"
+    try:
+        chat_doc = await chat_find_one({"user_id": user_id}) or {}
+        linked_projects = chat_doc.get("projects", [])
+    except Exception as e:  # pragma: no cover - DB might be down
+        logger.warning("chat_find_one() failed: %s", e)
+        linked_projects = []
+
+    project_map: dict[str, list[dict]] = {}
+    for proj in linked_projects:
+        desc = proj.get("description", "")
+        title = desc[:50] + ("…" if len(desc) > 50 else "")
+        for cand in proj.get("candidates", []):
+            rid = cand.get("id")
+            fit = cand.get("fit")
+            if not rid or fit is None:
+                continue
+            try:
+                fit_val = float(fit)
+            except (ValueError, TypeError):
+                continue
+            project_map.setdefault(rid, []).append({
+                "title": title,
+                "fit": round(fit_val, 1),
+            })
+
+    for rid, lst in project_map.items():
+        lst.sort(key=lambda x: x.get("fit", 0), reverse=True)
+        project_map[rid] = lst[:5]
+
     resumes_for_tpl = []
     for d in docs:
         oid = d.get("_id")
@@ -862,6 +893,7 @@ async def list_resumes(
                 "file_type": d.get("file_type", ""),
                 "added": added,
                 "projects": [p.isoformat() if hasattr(p, "isoformat") else p for p in d.get("projects", [])],
+                "project_fits": project_map.get(d.get("resume_id"), []),
             }
         )
 

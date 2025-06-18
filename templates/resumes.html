@@ -41,6 +41,13 @@
       <div class="text-xs mb-2">
         {{ r.projects|length }} project{{ '' if r.projects|length == 1 else 's' }}
       </div>
+      {% if r.project_fits %}
+      <div class="text-xs flex flex-wrap gap-1 mb-2">
+        {% for p in r.project_fits %}
+          <span class="chip">{{ p.title }} {{ p.fit }}%</span>
+        {% endfor %}
+      </div>
+      {% endif %}
       <div class="actions mt-auto flex justify-end gap-3 text-sm">
         <a href="/edit_resume?id={{ r.id }}" class="text-blue-600 hover:text-blue-800 flex items-center gap-1"><i class="fa-solid fa-pen"></i>Bewerken</a>
         <form action="/delete_resume" method="post" class="delete-form inline">
