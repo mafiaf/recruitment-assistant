@@ -34,6 +34,7 @@ from logger import logger
 from mongo_utils import (
     db,
     _users,
+    chats,
     update_resume,
     delete_resume_by_id,
     ENV,
@@ -58,6 +59,7 @@ from pinecone_utils import (
     embed_text,
     index,
     search_best_resumes,
+    search_best_projects,
 )
 from utils import sanitize_markdown
 from schemas import ResumeUpload, ChatRequest
@@ -310,6 +312,38 @@ def slugify(val: str) -> str:
     )
 
 
+async def link_resume_to_projects(resume_id: str, name: str, text: str):
+    """Link a newly uploaded résumé to matching projects."""
+    matches = search_best_projects(text)
+    for m in matches:
+        proj_id = getattr(m, "id", "")
+        if ":" not in proj_id:
+            continue
+        user_id, ts_iso = proj_id.split(":", 1)
+        try:
+            ts = datetime.fromisoformat(ts_iso)
+        except ValueError:
+            continue
+
+        candidate = {
+            "id": resume_id,
+            "name": name,
+            "fit": round(getattr(m, "score", 0) * 100, 1),
+            "text": text,
+        }
+        try:  # pragma: no cover - logging only
+            await chats.update_one(
+                {"user_id": user_id, "projects.ts": ts},
+                {"$push": {"projects.$.candidates": candidate}},
+            )
+            await resumes_collection.update_one(
+                {"resume_id": resume_id},
+                {"$addToSet": {"projects": ts}},
+            )
+        except Exception as e:  # pragma: no cover - logging only
+            logger.error("Failed to link resume to project %s: %s", proj_id, e)
+
+
 def extract_years_requirement(text: str) -> int | None:
     """Return the first integer that appears before 'year' or 'years'."""
     m = re.search(r"(\d+)\s*\+?\s*(?=years?)", text, flags=re.I)
@@ -400,6 +434,7 @@ async def upload_resume(
             await resumes_collection.insert_one(doc)
         except Exception as e:  # pragma: no cover
             logger.error("Mongo insert failed: %s", e)
+        await link_resume_to_projects(resume_id, display_name, text)
         added_names.append(display_name)
 
     else:
@@ -442,6 +477,7 @@ async def upload_resume(
                 await resumes_collection.insert_one(doc)
             except Exception as e:  # pragma: no cover
                 logger.error("Mongo insert failed: %s", e)
+            await link_resume_to_projects(resume_id, display_name, text)
             added_names.append(display_name)
 
         for f in files:
@@ -481,6 +517,7 @@ async def upload_resume(
                 await resumes_collection.insert_one(doc)
             except Exception as e:  # pragma: no cover
                 logger.error("Mongo insert failed: %s", e)
+            await link_resume_to_projects(resume_id, display_name, file_text)
             added_names.append(display_name)
 
     if not added_names:
