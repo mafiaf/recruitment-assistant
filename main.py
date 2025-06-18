@@ -568,6 +568,26 @@ async def match_project_logic(description: str,
     return "\n".join(f"* **{m.name}** – {m.score}%" for m in matches[:5])
 
 # ---------------------------------------------------------------------------
+# /match – simple form to rank candidates
+# ---------------------------------------------------------------------------
+@app.get("/match", response_class=HTMLResponse)
+async def match_form(request: Request, user=Depends(require_login)):
+    candidates = [
+        {
+            "id": r.get("resume_id"),
+            "name": r.get("name"),
+        }
+        for r in await resumes_all()
+    ]
+    return await render(
+        request,
+        "match_form.html",
+        {"candidates": candidates},
+        page_title="Match",
+        active="/match",
+    )
+
+# ---------------------------------------------------------------------------
 # /match_project – returns the full HTML table fragment
 # ---------------------------------------------------------------------------
 @app.post("/match_project", response_class=HTMLResponse)
