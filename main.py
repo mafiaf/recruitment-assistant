@@ -46,6 +46,7 @@ from mongo_utils import (
     add_project_history,
     delete_project,
     update_project_description,
+    update_project_status,
     ensure_indexes,
     resumes_count,
     resumes_page,
@@ -753,7 +754,8 @@ async def match_project(
             }
             for m in matches
         ],
-   }
+        "status": "active",
+    }
 
     res = add_project_history(user_id, project)
     if inspect.isawaitable(res):
@@ -868,12 +870,17 @@ PROJECTS_PER_PAGE = 10
 
 @app.get("/projects", response_class=HTMLResponse)
 async def project_history(
-    request: Request, page: int = 1, user=Depends(require_login)
+    request: Request,
+    page: int = 1,
+    active: str = "",
+    user=Depends(require_login),
 ):
     session_user = await get_current_user(request.cookies.get(COOKIE_NAME))
     user_id = session_user["username"] if session_user else "anon"
     doc = await chat_find_one({"user_id": user_id}) or {}
     projects = doc.get("projects", [])
+    if active and active != "0":
+        projects = [p for p in projects if p.get("status", "active") == "active"]
     projects = sorted(projects, key=lambda p: p.get("ts", 0), reverse=True)
     total = len(projects)
     start = (page - 1) * PROJECTS_PER_PAGE
@@ -886,6 +893,7 @@ async def project_history(
         "pages": pages,
         "prev_page": page - 1 if page > 1 else None,
         "next_page": page + 1 if page < pages else None,
+        "active_only": bool(active and active != "0"),
     }
     return await render(
         request,
@@ -929,10 +937,17 @@ async def edit_project_form(request: Request, ts: str, user=Depends(require_logi
 
 
 @app.post("/edit_project")
-async def edit_project_post(request: Request, ts: str = Form(...), description: str = Form(...), user=Depends(require_login)):
+async def edit_project_post(
+    request: Request,
+    ts: str = Form(...),
+    description: str = Form(...),
+    status: str = Form("active"),
+    user=Depends(require_login),
+):
     session_user = await get_current_user(request.cookies.get(COOKIE_NAME))
     user_id = session_user["username"] if session_user else "anon"
     await update_project_description(user_id, ts, description)
+    await update_project_status(user_id, ts, status)
     return RedirectResponse("/projects", status_code=303)
 
 @app.get("/view_resumes", response_class=HTMLResponse)

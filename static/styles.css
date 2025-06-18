@@ -452,3 +452,22 @@ button:disabled {
   background: #ef4444;
   color: #fff;
 }
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  background: #6b7280;
+  color: #fff;
+}
+
+.status-badge.active {
+  background: #22c55e;
+}
+
+.status-badge.archived {
+  background: #9ca3af;
+}
