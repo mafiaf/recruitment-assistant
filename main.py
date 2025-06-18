@@ -248,19 +248,19 @@ def parse_optional_int(val: str | int | None) -> int | None:
 # Routes – basic pages
 # ═════════════════════════════════════════════════════════════════════════════
 
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request, user=Depends(require_login)):
-    # Fetch recent resumes for the front page (best effort – works without DB)
+async def recent_resumes(limit: int = 5) -> List[dict]:
+    """Return a list of recent résumé summaries."""
     try:
         docs = await resumes_all()
     except Exception as e:  # pragma: no cover - DB might be down
         logger.warning("resumes_all() failed: %s", e)
         docs = []
 
-    # sort newest first and limit to 5 entries
-    docs.sort(key=lambda d: getattr(d.get("_id"), "generation_time", datetime.min),
-              reverse=True)
-    docs = docs[:5]
+    docs.sort(
+        key=lambda d: getattr(d.get("_id"), "generation_time", datetime.min),
+        reverse=True,
+    )
+    docs = docs[:limit]
 
     resumes = []
     for d in docs:
@@ -275,6 +275,12 @@ async def home(request: Request, user=Depends(require_login)):
             "added": added,
         })
 
+    return resumes
+
+
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request, user=Depends(require_login)):
+    resumes = await recent_resumes()
     return await render(request, "index.html", {"resumes": resumes}, page_title="Home")
 
 
@@ -401,10 +407,11 @@ async def upload_resume(
         years_val = parse_optional_int(resume.years if resume.years is not None else years)
 
         if not text:
+            resumes = await recent_resumes()
             return await render(
                 request,
                 "index.html",
-                {"popup": "Résumé text is empty."},
+                {"popup": "Résumé text is empty.", "resumes": resumes},
                 page_title="Home",
             )
 
@@ -521,15 +528,17 @@ async def upload_resume(
             added_names.append(display_name)
 
     if not added_names:
+        resumes = await recent_resumes()
         return await render(
             request,
             "index.html",
-            {"popup": "No valid résumé uploaded."},
+            {"popup": "No valid résumé uploaded.", "resumes": resumes},
             page_title="Home",
         )
 
     msg = "Résumés added: " + ", ".join(added_names) if len(added_names) > 1 else f"Résumé added: {added_names[0]}"
-    return await render(request, "index.html", {"popup": msg}, page_title="Home")
+    resumes = await recent_resumes()
+    return await render(request, "index.html", {"popup": msg, "resumes": resumes}, page_title="Home")
 
 
 # ---------------------------------------------------------------------------
@@ -583,20 +592,22 @@ async def match_project(
             description = "\n".join(p.text for p in doc.paragraphs)
 
     if not description.strip():
+        resumes = await recent_resumes()
         return await render(
             request,
             "index.html",
-            {"popup": "Project description is empty."},
+            {"popup": "Project description is empty.", "resumes": resumes},
             page_title="Home",
         )
 
     # ensure we get a simple list when numpy is stubbed during tests
     proj_vec = np.array(embed_text(description))
     if proj_vec is None:
+        resumes = await recent_resumes()
         return await render(
             request,
             "index.html",
-            {"popup": "Failed to embed project."},
+            {"popup": "Failed to embed project.", "resumes": resumes},
             page_title="Home",
         )
 
@@ -638,10 +649,11 @@ async def match_project(
 
     matches = sorted(matches, key=lambda m: m.sim_pct, reverse=True)[:5]
     if not matches:
+        resumes = await recent_resumes()
         return await render(
             request,
             "index.html",
-            {"popup": "No candidates found."},
+            {"popup": "No candidates found.", "resumes": resumes},
             page_title="Home",
         )
 
