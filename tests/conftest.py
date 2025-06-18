@@ -476,6 +476,9 @@ stub_pinecone_utils.add_resume_to_pinecone = lambda *a, **kw: None
 stub_pinecone_utils.embed_text = lambda *a, **kw: []
 stub_pinecone_utils.index = None
 stub_pinecone_utils.search_best_resumes = lambda *a, **kw: []
+stub_pinecone_utils.add_project_to_pinecone = lambda *a, **kw: None
+stub_pinecone_utils.search_best_projects = lambda *a, **kw: []
+stub_pinecone_utils.delete_project_from_pinecone = lambda *a, **kw: None
 sys.modules['pinecone_utils'] = stub_pinecone_utils
 
 # ── finally load main.py so tests can import it ───────────────────────────────

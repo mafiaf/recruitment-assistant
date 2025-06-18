@@ -29,6 +29,7 @@ def authed(monkeypatch):
     )
     monkeypatch.setattr(main, "openai", fake_openai)
     monkeypatch.setattr(main, "add_resume_to_pinecone", lambda *a, **k: None)
+    monkeypatch.setattr(main, "add_project_to_pinecone", lambda *a, **k: None)
     async def _insert(doc):
         return None
 

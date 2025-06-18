@@ -100,6 +100,7 @@ async def test_match_project_score_explanation(monkeypatch):
 
     monkeypatch.setattr(main, "index", DummyIndex())
     monkeypatch.setattr(main, "add_project_history", lambda *a, **k: None)
+    monkeypatch.setattr(main, "add_project_to_pinecone", lambda *a, **k: None)
     async def _req_login():
         return {"username": "u"}
     async def _cur_user(*a, **k):
@@ -150,6 +151,7 @@ async def test_match_project_dutch_header(monkeypatch):
 
     monkeypatch.setattr(main, "index", DummyIndex())
     monkeypatch.setattr(main, "add_project_history", lambda *a, **k: None)
+    monkeypatch.setattr(main, "add_project_to_pinecone", lambda *a, **k: None)
     async def _req_login():
         return {"username": "u"}
     async def _cur_user(*a, **k):

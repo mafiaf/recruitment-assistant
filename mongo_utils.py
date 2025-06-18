@@ -11,7 +11,7 @@ from bson import ObjectId
 from passlib.hash import bcrypt
 
 from settings import settings
-from pinecone_utils import add_resume_to_pinecone
+from pinecone_utils import add_resume_to_pinecone, delete_project_from_pinecone
 
 # ------------------------------------------------------------------ #
 # 0) environment & configuration                                     #
@@ -322,6 +322,9 @@ async def delete_project(user_id: str, ts_iso: str) -> int:
         {"user_id": user_id},
         {"$pull": {"projects": {"ts": ts}}},
     )
+    if res.modified_count:
+        project_id = f"{user_id}:{ts_iso}"
+        delete_project_from_pinecone(project_id)
     return res.modified_count
 
 
