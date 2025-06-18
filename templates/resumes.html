@@ -38,6 +38,9 @@
       <div class="text-xs text-gray-600 dark:text-gray-400 mb-2">
         {{ r.file_type|upper }}{% if r.years is not none %} · {{ r.years }} jr{% endif %}
       </div>
+      <div class="text-xs mb-2">
+        {{ r.projects|length }} project{{ '' if r.projects|length == 1 else 's' }}
+      </div>
       <div class="actions mt-auto flex justify-end gap-3 text-sm">
         <a href="/edit_resume?id={{ r.id }}" class="text-blue-600 hover:text-blue-800 flex items-center gap-1"><i class="fa-solid fa-pen"></i>Bewerken</a>
         <form action="/delete_resume" method="post" class="delete-form inline">

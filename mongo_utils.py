@@ -301,6 +301,14 @@ async def add_project_history(user_id: str, project: dict):
         upsert=True,
     )
 
+    # also store a back-reference on each candidate
+    candidate_ids = [c.get("id") for c in project.get("candidates", []) if c.get("id")]
+    if candidate_ids:
+        await _resumes.update_many(
+            {"resume_id": {"$in": candidate_ids}},
+            {"$addToSet": {"projects": project["ts"]}},
+        )
+
 
 async def delete_project(user_id: str, ts_iso: str) -> int:
     """Delete a project by timestamp for the given user."""
