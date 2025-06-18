@@ -13,8 +13,13 @@ def client(monkeypatch):
     class FakeColl:
         async def insert_one(self, doc):
             stored.append(doc)
+        async def update_one(self, *a, **k):
+            pass
 
     monkeypatch.setattr(main, "add_resume_to_pinecone", lambda *a, **k: None)
+    async def _link(*a, **k):
+        pass
+    monkeypatch.setattr(main, "link_resume_to_projects", _link)
     monkeypatch.setattr(main, "resumes_collection", FakeColl())
     async def _login():
         return {"username": "user"}

@@ -378,6 +378,11 @@ stub_mongo_utils.delete_project = _async_one
 stub_mongo_utils.update_project_description = _async_one
 stub_mongo_utils.update_project_status = _async_one
 stub_mongo_utils.ensure_indexes = _async_none
+class _Chats:
+    async def update_one(self, *a, **kw):
+        return None
+
+stub_mongo_utils.chats = _Chats()
 
 class DummyColl:
     def __getattr__(self, name):
