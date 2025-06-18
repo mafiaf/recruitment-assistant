@@ -1,0 +1,49 @@
+{% extends "_base.html" %}
+{% set active = "/match" %}
+{% set page_title = "Match" %}
+
+{% block body %}
+<div class="max-w-4xl mx-auto space-y-6">
+  <form id="match-form" class="card space-y-4">
+    <div>
+      <label class="block font-medium mb-1">Description</label>
+      <textarea name="description" rows="6" class="w-full border rounded px-3 py-2"></textarea>
+    </div>
+    <div>
+      <label class="block font-medium mb-1">File (optional)</label>
+      <input type="file" name="file" accept=".pdf,.docx" class="w-full">
+    </div>
+    <div>
+      <label class="block font-medium mb-1">Priority skills</label>
+      <input type="text" name="priority_skills" class="w-full border rounded px-3 py-2">
+    </div>
+    <div>
+      <span class="block font-medium mb-1">Candidates</span>
+      <div class="space-y-1">
+        {% for c in candidates %}
+        <label class="flex items-center gap-2">
+          <input type="checkbox" name="candidate_ids" value="{{ c.id }}" class="candidate-box">
+          <span>{{ c.name }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    <button type="submit" class="px-4 py-2 rounded bg-indigo-600 text-white">Match</button>
+  </form>
+  <div id="results"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('match-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const fd = new FormData(form);
+  const results = document.getElementById('results');
+  results.innerHTML = '...';
+  const resp = await fetch('/match_project', {method: 'POST', body: fd});
+  results.innerHTML = await resp.text();
+});
+</script>
+{% endblock %}
